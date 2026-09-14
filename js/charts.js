@@ -5,6 +5,7 @@ import { mountFrontier } from './frontier.js';
 import { mountAccrual } from './accrual.js';
 import { mountHarness } from './harness.js';
 import { mountRankRace } from './rankrace.js';
+import { HARNESS_COLOR } from './palette.js';
 
 let THEMES = null;
 let MODE = 'light';
@@ -52,6 +53,9 @@ function seqColorscale(theme) {
 function resolve(node, theme) {
   if (typeof node === 'string') {
     if (node === '@seq') return seqColorscale(theme);
+    // "@harness:pi|codex|cc": the harness palette (palette.js), the same hue
+    // the harness-effect and Pareto cards give that harness
+    if (node.startsWith('@harness:')) return HARNESS_COLOR[node.slice(9)] ?? node;
     if (node.startsWith('@')) return theme[node.slice(1)] ?? node;
     return node;
   }
