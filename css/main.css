@@ -411,11 +411,6 @@ tbody tr:hover { background: color-mix(in oklab, var(--grid) 40%, transparent); 
 }
 .error { color: var(--critical); font-size: 13px; }
 .loading { color: var(--muted); font-size: 13px; }
-/* The standalone post page has no chrome for a loading line to sit under, and
-   #blog-root carries none of .prose's padding yet, so the inherited rule leaves
-   it flush against the top-left corner. Centre it in the viewport instead; the
-   element is always replaced (blog.js route() replaceChildren on both paths). */
-.loading-standalone { position: fixed; inset: 0; display: grid; place-items: center; margin: 0; }
 
 /* masthead tabs (Dashboard / Traces) */
 .tabs { display: flex; gap: 4px; margin-left: auto; }
