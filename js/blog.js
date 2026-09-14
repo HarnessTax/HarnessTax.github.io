@@ -9,11 +9,13 @@
 // benchmark pills above the card shows one pane at a time (after the chart
 // switchers on openai.com's model posts), so a plot drawn for two benchmarks
 // takes one slot in the column.
-// A citation is a superscript linking to its reference entry (`#ref-N`);
-// the SPA routes on the hash, so a plain click scrolls there without changing
-// it. For opening in a new tab (modifier or middle click, copied link) the
-// anchors are rewritten to `#blog/<slug>/ref-N` once mounted, and a `#ref-N`
-// page hash (an older link) is routed here by app.js; both land on the entry.
+// A citation is a superscript linking to its reference entry (`#ref-N`), a
+// footnote marker one linking to its note (`#fn-N`, the note linking back to
+// `#fnref-N`); the SPA routes on the hash, so a plain click scrolls there
+// without changing it. For opening in a new tab (modifier or middle click,
+// copied link) the anchors are rewritten to `#blog/<slug>/<id>` once mounted,
+// and a `#ref-N` page hash (an older link) is routed here by app.js; both
+// land on the entry.
 // The tab shows the post and nothing else: build diagnostics (missing images
 // or charts) go to the console, and the page title becomes the post's.
 // Drafts are listed in the site-root manifest blog.json, written by
@@ -215,7 +217,7 @@ export async function route(hash, boot, { draft = true } = {}) {
       target.classList.add('ref-hit');
       target.scrollIntoView({ block: 'center' });
     };
-    for (const a of article.querySelectorAll('a[href^="#ref-"]')) a.dataset.entry = a.getAttribute('href').slice(1);
+    for (const a of article.querySelectorAll('a[href^="#ref-"], a[href^="#fn-"], a[href^="#fnref-"]')) a.dataset.entry = a.getAttribute('href').slice(1);
     for (const a of article.querySelectorAll('a[data-entry]')) a.href = `#blog/${encodeURIComponent(post.slug)}/${a.dataset.entry}`;
     article.addEventListener('click', (ev) => {
       if (ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return; // the browser's new-tab gesture

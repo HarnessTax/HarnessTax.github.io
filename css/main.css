@@ -1004,6 +1004,19 @@ html[data-view="blog"] .masthead { justify-content: flex-end; padding-bottom: 0;
 .prose p.ref .ref-num { display: inline-block; width: 2.6em; text-indent: 0; color: var(--muted); white-space: pre; }
 .prose em.tease { color: #d97757; } /* an italic run trailing off in an ellipsis (blog.py tags it): Anthropic's clay */
 .prose p.ref.ref-hit { background: var(--wash); box-shadow: -10px 0 0 var(--wash), 10px 0 0 var(--wash), inset 3px 0 0 var(--accent); }
+/* footnotes (blog.py: `\footnote{…}` leaves a numbered marker in the text and
+   sets the note at the foot of its section): the marker grey, like the notes,
+   so it does not read as a citation; the notes small grey sans under a short
+   rule, hanging indent like the reference entries */
+.prose sup.fn { font-family: var(--blog-sans); font-size: 0.68em; line-height: 0; vertical-align: super; }
+.prose sup.fn a { color: var(--ink2); text-decoration: none; }
+.prose sup.fn a:hover { text-decoration: underline; }
+.prose .footnotes { margin: calc(var(--blog-root) * 1.6) auto calc(var(--blog-root) * 1.4); }
+.prose .footnotes::before { content: ""; display: block; width: 5rem; border-top: 1px solid var(--axis); margin-bottom: calc(var(--blog-root) * 0.6); }
+.prose p.footnote { font-family: var(--blog-sans); font-size: calc(var(--blog-root) * 0.8); color: var(--ink2); line-height: 1.5; margin: 0 0 calc(var(--blog-root) * 0.4); padding-left: 1.7em; text-indent: -1.7em; }
+.prose p.footnote .fn-num { display: inline-block; width: 1.7em; text-indent: 0; color: var(--muted); text-decoration: none; }
+.prose p.footnote .fn-num:hover { color: var(--ink); }
+.prose p.footnote.ref-hit { background: var(--wash); box-shadow: -10px 0 0 var(--wash), 10px 0 0 var(--wash), inset 3px 0 0 var(--accent); }
 /* unresolved inline notes, `\tbd{...}` / `\melissa{...}` / `[placeholder]`, in red */
 .prose .todo { color: var(--critical); }
 /* a folded section (its heading was marked "collapsable, closed by default") */
