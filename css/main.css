@@ -565,7 +565,7 @@ details.info { margin: 6px 0 6px 22px; }
 @media (max-width: 1000px) { .cmp-grid { grid-template-columns: 1fr; } }
 
 /* ------------------------------------------------ frontier card (Part I) */
-/* header controls: view switcher + notes/table toggles share one row */
+/* header controls: the view switcher shares the title row */
 .card-head { flex-wrap: wrap; }
 .card-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .seg {
@@ -587,7 +587,6 @@ details.info { margin: 6px 0 6px 22px; }
 }
 .seg button:hover { color: var(--ink); }
 .seg button[aria-pressed="true"] { background: var(--grid); color: var(--ink); }
-.card-notes { margin: 8px 0 4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
 
 .frontier-body { width: 100%; }
 .fr-toolbar {
@@ -801,34 +800,7 @@ details.info { margin: 6px 0 6px 22px; }
 .acc-metric { align-self: center; margin-left: 10px; flex-shrink: 0; }
 .acc-metric button:disabled { opacity: .38; cursor: not-allowed; }
 .acc-metric button:disabled:hover { color: var(--muted); }
-/* gap statistics for one model's systems (exact, computed server-side) */
-.acc-delta {
-  display: grid;
-  gap: 3px;
-  margin: 8px 0 2px;
-  padding: 7px 11px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--ink2);
-  font-size: 11.5px;
-  line-height: 1.45;
-}
-.acc-delta-head {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  color: var(--ink);
-  font-weight: 600;
-}
-.acc-delta-hint { color: var(--muted); font-weight: 400; font-size: 11px; }
-.acc-delta-list { margin: 0; padding-left: 16px; }
-.acc-delta-list li { margin: 0; }
-.acc-delta b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .accrual-body .plot .scatterlayer .trace { transition: opacity .3s ease; }
-/* the stats strip sits under the figure and shows only for a selection */
-.acc-delta[hidden] { display: none; }
 /* the opening story plays on an SVG overlay above the empty axes (every
    curve growing at one shared spend, a badge riding each tip), then dissolves
    into the figure's resting state, which is its final frame */
@@ -853,7 +825,6 @@ details.info { margin: 6px 0 6px 22px; }
    overlapping text. */
 .harness-body { width: 100%; }
 .hb-body { display: flex; gap: 14px; align-items: flex-start; overflow-x: auto; }
-.hb-body.hide { display: none; }
 .hb-left { width: 556px; flex: none; }
 .hb-right { width: 578px; flex: none; }
 /* column headers: identical height in both panes so the two SVGs start on the same y */
@@ -892,18 +863,6 @@ details.info { margin: 6px 0 6px 22px; }
 .hb-tip .r { color: var(--ink2); }
 .hb-tip .dup { color: var(--muted); font-size: 11px; } /* repeats a number already printed at a bar tip (its interval is not); smaller and muted so the new lines lead */
 .hb-tip .cap { color: var(--ink2); }
-.hb-pane { display: none; }
-.hb-pane.show { display: block; min-height: 586px; } /* = column header 26 + 8 + chart 552, so the card keeps its height when a pane is shown */
-.hb-table { overflow-x: auto; max-width: 100%; }
-.hb-table table { border-collapse: collapse; font-size: 11px; width: 100%; table-layout: auto; font-variant-numeric: tabular-nums; }
-.hb-table th, .hb-table td { text-align: right; padding: 3px 5px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
-.hb-table th:first-child, .hb-table td:first-child, .hb-table th:nth-child(2), .hb-table td:nth-child(2), .hb-table th:last-child, .hb-table td:last-child { text-align: left; }
-.hb-table td:last-child { white-space: normal; max-width: 300px; }
-.hb-table th { color: var(--ink2); font-weight: 600; }
-.hb-notes { color: var(--ink2); font-size: 12px; line-height: 1.5; max-width: 900px; }
-.hb-notes p { margin: 6px 0; }
-/* the card's own notes / table buttons sit with the card actions; they wear the card-actions button style */
-.hb-actions { display: inline-flex; gap: 6px; }
 
 /* ---------------------------------------------- rank-race cards (Part I) */
 /* Bar-chart race (web/js/rankrace.js): one absolutely positioned row per system, slid to its rank with a CSS
@@ -942,7 +901,7 @@ details.info { margin: 6px 0 6px 22px; }
 /* the bar follows the sweep frame by frame: a short linear transition smooths the exact steps without lagging */
 .rr-bar { position: absolute; left: 0; top: calc((var(--rr-row) - var(--rr-bar)) / 2); height: var(--rr-bar); width: 0; border-radius: 2px;
           box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .10); transition: width .3s linear; }
-/* end cap: every rollout of the system is counted, the bar has reached its resolved rate */
+/* end cap: every rollout of the system is counted, the bar has reached its success rate */
 .rr-bar.done::before { content: ''; position: absolute; right: -1px; top: -2px; bottom: -2px; width: 2px; background: var(--ink2); border-radius: 1px; }
 /* off-axis bar: a surface-coloured gap crossed by two slashes near its end, as on the harness card */
 .rr-bar.off::after { content: ''; position: absolute; right: 12px; top: -2px; bottom: -2px; width: 7px; background: var(--surface);
@@ -976,7 +935,6 @@ details.info { margin: 6px 0 6px 22px; }
 .blog-nav a { padding: 6px 12px; color: var(--muted); text-decoration: none; border-radius: 6px; font-size: 13px; }
 .blog-nav a:hover { color: var(--ink); }
 .blog-nav a[aria-pressed="true"] { background: var(--grid); color: var(--ink); }
-.prose-meta { max-width: calc(var(--blog-text) + 2 * var(--blog-pad)); margin: 0 auto 10px; color: var(--muted); font-size: 12px; }
 .prose { max-width: calc(var(--blog-text) + 2 * var(--blog-pad)); margin: 0 auto 32px; padding: var(--blog-pad) var(--blog-pad) 44px; font-family: var(--blog-serif); font-size: calc(var(--blog-root) * 1.04); line-height: 1.65; font-feature-settings: "kern", "liga", "clig", "onum"; -webkit-font-smoothing: antialiased; overflow-wrap: anywhere; }
 .prose > * { max-width: var(--blog-text); margin-left: auto; margin-right: auto; }
 .prose > figure, .prose > table { max-width: none; }
@@ -1013,6 +971,41 @@ details.info { margin: 6px 0 6px 22px; }
 .prose th, .prose td { padding: 7px 10px; border-bottom: 1px solid var(--grid); text-align: left; vertical-align: top; }
 .prose th { color: var(--ink2); font-weight: 600; border-bottom: 1px solid var(--axis); }
 .prose a { color: var(--accent); }
+/* the Blog tab is the post alone: no masthead title, tabs or footer, only the
+   theme toggle (app.js stamps data-view on <html>) */
+html[data-view="blog"] .masthead > div, html[data-view="blog"] .masthead .tabs, html[data-view="blog"] .footer { display: none; }
+html[data-view="blog"] .masthead { justify-content: flex-end; padding-bottom: 0; }
+@media (max-width: 640px) { .dash-figure .hb-legend .item { white-space: normal; } } /* the harness card's long legend item would otherwise overflow a phone */
+/* headings pasted from a Google Doc arrive wrapped in bold; the heading weight already is */
+.prose h1 strong, .prose h2 strong, .prose h3 strong { font-weight: inherit; }
+/* byline pair under the title (blog.py tags the two paragraphs), after
+   flashml: authors in the strong ink, affiliations muted, a rule below */
+.prose .byline { font-family: var(--blog-sans); font-size: calc(var(--blog-root) * 0.86); color: var(--muted); margin: 0 auto calc(var(--blog-root) * 1.6); padding-bottom: calc(var(--blog-root) * 1.4); border-bottom: 1px solid var(--grid); }
+.prose .byline-authors { font-size: calc(var(--blog-root) * 0.92); color: var(--ink); line-height: 1.55; margin-bottom: calc(var(--blog-root) * 0.4); padding-bottom: 0; border-bottom: 0; }
+.prose .byline-authors sup { font-size: 0.65em; color: var(--muted); margin-left: 0.06em; vertical-align: 0.5em; }
+.prose .byline-affil sup { font-size: 0.78em; vertical-align: 0.4em; }
+/* a numbered citation: a clickable superscript to its reference entry (blog.js
+   scrolls there, since the SPA routes on the hash); one with no entry is red */
+.prose sup.cite { font-family: var(--blog-sans); font-size: 0.68em; line-height: 0; vertical-align: super; }
+.prose sup.cite a { color: var(--accent); text-decoration: none; }
+.prose sup.cite a:hover { text-decoration: underline; }
+.prose sup.cite a.missing { color: var(--critical); }
+/* reference entries: hanging indent behind the [N] label; the entry a
+   citation was just followed to is washed */
+.prose p.ref { font-family: var(--blog-sans); font-size: calc(var(--blog-root) * 0.86); color: var(--ink2); line-height: 1.5; margin-bottom: calc(var(--blog-root) * 0.55); padding-left: 2.6em; text-indent: -2.6em; }
+.prose p.ref .ref-num { display: inline-block; width: 2.6em; text-indent: 0; color: var(--muted); white-space: pre; }
+.prose em.tease { color: #d97757; } /* an italic run trailing off in an ellipsis (blog.py tags it): Anthropic's clay */
+.prose p.ref.ref-hit { background: var(--wash); box-shadow: -10px 0 0 var(--wash), 10px 0 0 var(--wash), inset 3px 0 0 var(--accent); }
+/* unresolved inline notes, `\tbd{...}` / `\melissa{...}` / `[placeholder]`, in red */
+.prose .todo { color: var(--critical); }
+/* a folded section (its heading was marked "collapsable, closed by default") */
+.prose details.fold { margin: calc(var(--blog-root) * 3.2) auto calc(var(--blog-root) * 0.9); }
+.prose details.fold > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 0.5em; color: var(--ink); font-size: inherit; } /* the trace viewer's `details > summary` rule mutes and shrinks summaries */
+.prose details.fold > summary::-webkit-details-marker { display: none; }
+.prose details.fold > summary::before { content: "▸"; font-family: var(--blog-sans); color: var(--muted); font-size: calc(var(--blog-root) * 1.1); flex: none; }
+.prose details.fold[open] > summary::before { content: "▾"; }
+.prose details.fold > summary h2 { margin: 0; }
+.prose details.fold[open] > summary { margin-bottom: calc(var(--blog-root) * 0.9); }
 /* live dashboard figures (`![caption](dashboard:<chart>)`): the chart's own card
    with its pills, replay, notes and table; the collapse toggle is inert here
    (a live figure keeps `.prose figure`'s margins; nothing here may set them
@@ -1046,7 +1039,6 @@ details.info { margin: 6px 0 6px 22px; }
   .dash-wide .hb-left, .dash-wide .hb-right { width: 100%; max-width: 100%; flex: none; }
 }
 .dash-figure .harness-body svg[data-chart] { width: 100%; height: auto; }
-.dash-figure .hb-pane.show { min-height: 0; }
 .dash-figure .hb-legend { flex-wrap: wrap; }
 .dash-figure .hb-fn { white-space: normal; overflow: visible; text-overflow: clip; }
 @media (max-width: 700px) {

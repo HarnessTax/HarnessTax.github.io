@@ -14,13 +14,12 @@
 // mockup's own), the numbers come from spec.harness
 // (dashboard/charts.py::_harness_effect_spec — `rows`, the task-paired Pi
 // contrasts, and `frontier_points`, the Pareto card's cells) instead of
-// data.json, the notes/table buttons sit in the card header, and the neutral
-// colours follow the dashboard theme. Every number is drawn as the mockup
+// data.json, and the neutral colours follow the dashboard theme. Every number is drawn as the mockup
 // draws it; a model whose cell is missing on a harness keeps an empty row.
 
-import { PALETTE_PARAMS, PALETTE_KEY, HARNESS_COLOR, HARNESS_WORD } from './palette.js';
+import { PALETTE_PARAMS, HARNESS_COLOR } from './palette.js';
 
-const HARNESSES = ['pi', 'codex', 'cc']; // row order within every model group, top to bottom: Pi, Codex, Claude Code (legend, hover "vs" list and notes follow it; the same order as the harness pills of the cards above)
+const HARNESSES = ['pi', 'codex', 'cc']; // row order within every model group, top to bottom: Pi, Codex, Claude Code (legend and hover "vs" list follow it; the same order as the harness pills of the cards above)
 const PAIRS = [['pi', 'codex'], ['pi', 'cc'], ['cc', 'codex']]; // difference = second − first; the Pi-based pairs first (they carry the paired statistics), Codex before Claude Code as in the rows
 const HARNESS_LABEL = { pi: 'Pi', cc: 'Claude Code', codex: 'Codex' };
 // ---------- palette: palette.js is the ONE place the harness colours live (shared with the Pareto card's harness frontier) ----------
@@ -29,7 +28,6 @@ const HARNESS_LABEL = { pi: 'Pi', cc: 'Claude Code', codex: 'Codex' };
 // group header and the row order; every other accent on the card is neutral ink or grey. ?palette=a|b|c and
 // ?codex=<hex> (see palette.js) switch the variants.
 const CROSS_SCOPE = 'arena-cross-family-r1-r3'; // cells that ran through a different serving route
-const SHORT = { fable: 'Fable', opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku', sol: 'Sol', luna: 'Luna', kimi: 'Kimi' };
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const WHISKER = { opacity: 0.12, width: 1, cap: 3 }; // present but almost invisible; one style for both panels (cost x_ci, rate y_ci)
 const preModel = PALETTE_PARAMS.get('model'), preHarness = PALETTE_PARAMS.get('harness');
@@ -55,12 +53,7 @@ const fmtBr = (ci, f) => `[${f(ci[0])}, ${f(ci[1])}]`; // plain-bracket interval
 const fmtPct = (v) => (v * 100).toFixed(1) + '%';
 const sgn = (v) => (v > 0 ? '+' : v < 0 ? '−' : '+');
 const fmtPP = (d) => sgn(d) + Math.abs(d * 100).toFixed(1) + '%';
-const fmtPPn = (d) => sgn(d) + Math.abs(d * 100).toFixed(1);
-const fmtCI = (ci) => `[${fmtPPn(ci[0])}, ${fmtPPn(ci[1])}]`;
 const fmtMult = (r) => (r >= 10 ? r.toFixed(1) : r >= 0.1 ? r.toFixed(2) : r.toPrecision(3)) + '×';
-const fmtChg = (r) => { const p = (r - 1) * 100; const a = Math.abs(p); const txt = a >= 100 ? Math.round(a).toLocaleString('en-US') : a.toFixed(0); return sgn(p) + txt + ' %'; };
-const isZero = (v) => Math.abs(v) < 1e-9;
-const zeroWord = (ci) => (ci[0] < 0 && ci[1] > 0 && !isZero(ci[0]) && !isZero(ci[1])) ? 'covers 0' : (ci[0] <= 1e-9 && ci[1] >= -1e-9) ? 'touches 0 at a bound' : 'excludes 0';
 
 // one tick chooser for every cost axis: the labelled step is the smallest m x 10^k (m in 1, 1.5, 2, 2.5, 3, 4, 5)
 // that covers the value in at most MAX_MAJORS steps; minor gridlines sit at half the labelled step.
@@ -92,7 +85,7 @@ const defaultAxis = (win) => axisFor(win.max, 0.2);
 // Row constants, identical in every sister card so the cards stack cleanly: row r of group g sits at y = top + g·grpH + hdr + r·(barH + gap).
 const ROWS = { top: 30, grpH: 74, hdr: 20, barH: 13, gap: 4 };
 // Best-in-group mark: within one model, the harness that is best on that panel's own quantity — the cheapest cell on the
-// cost panel, the highest resolved rate on the rate panel — has its harness name in the label column written in green
+// cost panel, the highest success rate on the rate panel — has its harness name in the label column written in green
 // (BEST_GREEN) at weight 600 AND its bar wrapped by a 2 px green ring; the other two names stay the muted ink and their
 // bars are unmarked. "Best" is read off the data, not off the bar, so it stays correct however a panel encodes its
 // quantity, and exact ties all carry it.
@@ -107,7 +100,6 @@ const ROWS = { top: 30, grpH: 74, hdr: 20, barH: 13, gap: 4 };
 const BEST = { sw: 2, pad: 2, rx: 3 };
 const COST = { host: 'cost', mode: 'cost', W: 556, x0: 98, right: 62, labels: true, lblX: 8, nameX: 8 };
 const RATE = { host: 'rate', mode: 'rate', W: 578, x0: 98, right: 62, labels: true, lblX: 8, nameX: 8 };
-const fmtTick = (t) => (t === 0 ? '$0' : '$' + t.toFixed(1)); // the default window's $ format, used by the notes prose
 const FIT_MS = 300;
 const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 const easeInOut = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
@@ -130,20 +122,14 @@ export function mountHarness(body, spec, ctx) {
   const costHint = el('span', { class: 'hb-hint' }, costHead);
   const hosts = { cost: el('div', {}, left), rate: null };
   const right = el('div', { class: 'hb-right' }, bodyEl);
-  el('span', {}, el('div', { class: 'hb-colhead' }, right), 'Resolved rate (%)');
+  el('span', {}, el('div', { class: 'hb-colhead' }, right), 'Success rate (%)');
   hosts.rate = el('div', {}, right);
-  const notesEl = el('div', { class: 'hb-pane hb-notes' }, body);
-  const tableEl = el('div', { class: 'hb-pane hb-table' }, body);
   const legendEl = el('div', { class: 'hb-legend' }, body);
   const footnoteEl = el('p', { class: 'hb-fn' }, body);
   const tip = el('div', { class: 'hb-tip', role: 'tooltip' }, document.body);
-  // the notes / table buttons: the card header holds them (charts.js appends `seg` to the card actions)
-  const seg = el('div', { class: 'hb-actions' });
-  const btnNotes = el('button', { type: 'button', 'aria-pressed': 'false' }, seg, 'notes');
-  const btnTable = el('button', { type: 'button', 'aria-pressed': 'false' }, seg, 'table');
   const card = body.closest('.card') || body;
 
-  const state = { pinned: null, hover: null, pane: null };
+  const state = { pinned: null, hover: null };
   // The cost panel's axis: `axis` is what is painted right now (the default window, a fitted window or a frame of the
   // transition); `target` is the settled axis that frame is heading for. Every piece of prose — the header hint, the SVG
   // and row aria-labels, the break mark and the tooltip's broken-bar clause — reads `target`, so no interpolated
@@ -277,7 +263,7 @@ export function mountHarness(body, spec, ctx) {
       s('line', { x1: x0, x2: x0, y1: band.y1, y2: band.y2, stroke: AXIS, 'stroke-width': 1 }, g);
       if (i > 0) s('line', { x1: 4, x2: W - 4, y1: gy, y2: gy, stroke: GRID }, g);
       const cy0 = gy + hdr; // the first bar starts where the header band ends
-      const best = bestHarnesses(m, mode); // cheapest on the cost panel, highest resolved rate on the rate panel; ties included
+      const best = bestHarnesses(m, mode); // cheapest on the cost panel, highest success rate on the rate panel; ties included
       if (C.labels) {
         const name = s('text', { class: 'mname', x: C.lblX, y: gy + 14, 'font-size': 12, 'font-weight': 600, fill: INK,
                                  role: 'button', tabindex: 0, 'aria-label': `${m.label}: highlight this model in both charts` }, g, m.label);
@@ -366,7 +352,7 @@ export function mountHarness(body, spec, ctx) {
     const hasOff = mode === 'cost' && allCells(V.models).some((z) => tax.isOff(z.c));
     R.svg.setAttribute('aria-label', mode === 'cost'
       ? `Cost per rollout per model and harness (linear axis, $0 to ${tax.fmt(tax.max)}, whisker = 95% interval${hasOff ? '; a broken bar runs beyond the axis end' : ''}${CAXIS.fitted ? `; axis fitted to ${CAXIS.fitted.label}` : ''})`
-      : 'Resolved rate per model and harness (linear axis, 0 to 100%, whisker = 95% interval)');
+      : 'Success rate per model and harness (linear axis, 0 to 100%, whisker = 95% interval)');
     for (let i = 0; i < R.grid.length; i++) {
       const row = R.grid[i];
       if (i >= ticks.length) { for (const ln of row) ln.setAttribute('display', 'none'); continue; }
@@ -554,51 +540,12 @@ export function mountHarness(body, spec, ctx) {
   function renderFootnote() {
     const fn = footnoteEl;
     fn.innerHTML = '';
-    el('span', {}, fn, 'bars: cost per rollout and resolved rate · whisker = 95 % interval · ');
+    el('span', {}, fn, 'bars: cost per rollout and success rate · whisker = 95 % interval · ');
     el('span', { class: 'cue' }, fn, '← is better');
     el('span', {}, fn, ' for cost, ');
     el('span', { class: 'cue' }, fn, '→ is better');
     el('span', {}, fn, ' for accuracy');
   }
-  function renderNotes() {
-    const n = notesEl;
-    n.innerHTML = '';
-    const V = VIEW;
-    const short = (key) => SHORT[key] || (V.models.find((m) => m.key === key) || {}).label || key;
-    const byH = {};
-    for (const r of V.matched) (byH[r.harness] = byH[r.harness] || []).push(short(r.model));
-    const matchedTxt = HARNESSES.filter((h) => byH[h]).map((h) => `${byH[h].join(', ')} × ${HARNESS_LABEL[h]}`).join('; ');
-    const descr = V.allPairs.filter((p) => p.kind === 'descriptive' && p.row && p.row.reasons.length).map((p) => `${short(p.model.key)} ${p.a.label} → ${p.b.label} (${p.row.reasons.join(', ')})`);
-    const win = V.costWin;
-    const offTxt = win.off.length
-      ? win.off.map((x) => { const z = allCells(V.models).find((q) => q.c.x === x); return `${z.m.label} × ${z.c.label} (${fmtUSD(x)})`; }).join(', ')
-      : 'none';
-    el('p', {}, n, `Two bar charts share one set of rows: for each model, its three harnesses in the rows Pi, Codex, Claude Code (top to bottom), 30 tasks × 3 runs per cell. Left: cost per rollout on a linear axis from $0 in $0.20 steps ($0.10 minor gridlines) to a per-benchmark end, the smallest $0.20 multiple that holds every cell except off-axis outliers (${fmtTick(win.max)} here). A cell costing more than 3× the next-costliest cell on the benchmark is off-axis: its bar runs to the axis end, carries a break mark and reads its value at the tip with an arrow; on this benchmark: ${offTxt}. Right: resolved rate on a linear 0–100% axis (labels every 20%, gridlines every 10%), the same rows at the same heights. Every bar on both charts carries its 95% task-bootstrap whisker (the cost interval on the left, the resolved-rate interval on the right), 1 px ink drawn at ${Math.round(WHISKER.opacity * 100)}% opacity with 3 px caps so the bar reads first and the interval stays available; a cost interval that runs past the axis end is clipped there (the line stops at the axis end without a cap) and rescales with the bars when the axis is fitted. Each chart has its own 98 px label column: the model name heads each group and the harness name sits beside each bar; only the value is written at a bar\'s tip; a bar\'s colour is its harness (${HARNESSES.map((h) => `${HARNESS_LABEL[h]} ${HARNESS_WORD[h]} ${HARNESS_COLOR[h]}`).join(', ')}; palette "${PALETTE_KEY}" of a/b/c, switched with ?palette=, and ?codex=<hex> overrides the Codex purple), the same three colours in every model group, so the harness comparison reads within a model and then across models; palette a is the default (Pi the lighter warm grey), b tries Pi in pi.dev\'s grey-blue, c deepens the purple and the orange. On each panel the model\'s best cell — the cheapest on the left, the highest resolved rate on the right, ties included, judged from the data rather than the bar — has its harness name in the label column written in green (${BEST_GREEN}, weight 600) and its bar wrapped by a 2 px green (${BEST_GREEN}) ring drawn 2 px outside the bar on every side, in a layer above the neighbouring rows so its four edges read alike and following the bar through an axis fit; the other two names stay muted and their bars carry no ring. The legend\'s swatches follow the row order.`);
-    el('p', {}, n, 'Hover a bar: its twin in the other chart is outlined too, the model\'s rows get a faint yellow wash, and a four-line tooltip names the cell, repeats its rate and cost in small muted type with the 95% intervals the bars do not show, and sets the cell against the model\'s other two harnesses (this − other in %; this ÷ other in cost). Click a bar, a harness label or a model name to keep that model\'s rows highlighted in light yellow (#fff3b0) in both charts; click again, press Esc or click the card background to clear. Selecting a model whose cell is off-axis also fits the cost axis to that model: the axis end becomes the nice step multiple at or above its largest cost, the bar is drawn complete with no break mark, and every other cost bar is redrawn on that same axis, so the panel is never mixed-scale; the header says which model the axis is fitted to, and clearing the selection restores the default window. The resolved-rate axis never changes.');
-    el('p', {}, n, `Intervals: ${matchedTxt ? 'the controlled contrasts (same cohort and billing route: ' + matchedTxt + ')' : 'no pair'} and the other Pi-based direct-route pairs${descr.length ? ' (descriptive, cohort or billing route differs: ' + descr.join('; ') + ')' : ''} carry paired per-task statistics (runs averaged within task, task-bootstrap 95% intervals); these drive the table\'s "cover 0" column. Every other pair uses the ratio or difference of cell means with an approximate interval formed from the two cells\' 95% intervals (difference of the bounds, not paired). The whiskers on both charts are the per-cell intervals, not the paired ones.`);
-    el('p', {}, n, 'Serving route: Codex on the Claude models and Kimi, and Claude Code on Sol, Luna and Kimi (3 reps each) ran through a different serving route from the Pi cells, so their costs are not directly comparable: on the 13 SWE-bench cells that exist on both routes, that route billed 1.3–1.5× the other for the Claude models and 5–6× for Pi × Sol/Luna, with no detectable resolved-rate difference. Bars are styled by harness only; the route is stated here and in the table, not on the card.');
-    const cav = V.allPairs.filter((p) => p.caveats.length);
-    const zeroLo = allCells(V.models).filter((z) => z.c.x_ci && z.c.x_ci[0] === 0);
-    if (zeroLo.length) el('p', {}, n, zeroLo.map((z) => `${z.m.label} × ${z.c.label}`).join(', ') + ': the cost interval\'s lower bound is reported as $0.00 because the task bootstrap could not resolve it with 3 runs per task; the upper bound stands.');
-    if (cav.length) el('p', {}, n, cav.map((p) => `${p.model.label} (${p.b.label}): ${p.caveats.join('; ')}.`).join(' '));
-    if (V.matched.length && V.matched.every((r) => r.descriptive)) el('p', {}, n, 'All Terminal-Bench contrasts are descriptive common-n30 estimates with no confirmatory test. The Claude Code cells ran later than the Pi cells and only Claude Code had the 100-turn cap.');
-  }
-
-  function renderTable() {
-    const t = tableEl;
-    t.innerHTML = '';
-    const tbl = el('table', {}, t);
-    const tr = el('tr', {}, el('thead', {}, tbl));
-    for (const hdr of ['Model', 'Pair (second − first)', 'First $', 'Second $', 'Cost change', 'Cost ×', 'First resolved', 'Second resolved', 'Δ %', 'Δ interval', 'Qualifier']) el('th', {}, tr, hdr);
-    const tb = el('tbody', {}, tbl);
-    for (const m of VIEW.models) for (const pr of m.pairs) {
-      const r = el('tr', {}, tb);
-      [m.label, `${pr.a.label} → ${pr.b.label}`, fmtUSD(pr.a.x), fmtUSD(pr.b.x), fmtChg(pr.ratio), fmtMult(pr.ratio), fmtPct(pr.a.y), fmtPct(pr.b.y), fmtPP(pr.dpp),
-       (pr.paired ? 'paired 95% CI ' : 'approx. ') + fmtCI(pr.dpp_ci) + ' (' + zeroWord(pr.dpp_ci) + ')', pr.qual + (pr.caveats.length ? '; ' + pr.caveats.join('; ') : '')]
-        .forEach((v) => el('td', {}, r, v));
-    }
-  }
-
   // ---------- controls ----------
   function render() {
     readTheme();
@@ -610,19 +557,9 @@ export function mountHarness(body, spec, ctx) {
     const t0 = axisTarget(); CAXIS.axis = t0.axis; CAXIS.target = t0.axis; CAXIS.fitted = t0.fitted;
     // a view change (the first paint, a theme change) rebuilds both structures; every later axis move is layout only
     buildChart(COST); buildChart(RATE); layoutChart(COST); layoutChart(RATE); applyHighlight();
-    renderLegend(); renderFootnote(); renderNotes(); renderTable();
-    applyPane();
-  }
-  function applyPane() {
+    renderLegend(); renderFootnote();
     hideTip();
-    bodyEl.classList.toggle('hide', !!state.pane);
-    notesEl.classList.toggle('show', state.pane === 'notes');
-    tableEl.classList.toggle('show', state.pane === 'table');
-    btnNotes.setAttribute('aria-pressed', String(state.pane === 'notes'));
-    btnTable.setAttribute('aria-pressed', String(state.pane === 'table'));
   }
-  btnNotes.addEventListener('click', () => { state.pane = state.pane === 'notes' ? null : 'notes'; applyPane(); });
-  btnTable.addEventListener('click', () => { state.pane = state.pane === 'table' ? null : 'table'; applyPane(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') clearPin(); });
   // clicking the card background (not a bar row, a model name or a control) clears the selection
   card.addEventListener('click', (e) => {
@@ -642,14 +579,14 @@ export function mountHarness(body, spec, ctx) {
 
   let shown = false;
   return {
-    seg,
+    seg: null,
     show() {
       if (shown) return;
       shown = true;
       render();
     },
     rerender() {
-      // theme change: redraw in place with the new neutrals; the selection and the open pane stay
+      // theme change: redraw in place with the new neutrals; the selection stays
       if (shown) render();
     },
   };

@@ -69,7 +69,7 @@ const FORMAT = {
     subset: (k, n) => `${k} of ${n} rollouts with the fewest steps`, peak: 'most steps in one rollout so far',
   },
 };
-// resolved-rate differences are shown as percentage points written with %
+// success-rate differences are shown as percentage points written with %
 const pct = (v, signed = false) => `${signed && v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -419,80 +419,6 @@ function syncStatus(state) {
       : `pick a model or harness, or click a badge · ${ZOOM_HINT}`;
 }
 
-function deltaLine(list, parts) {
-  const li = h('li', null, list);
-  for (const part of parts) {
-    if (typeof part === 'string') li.appendChild(document.createTextNode(part));
-    else h('b', null, li).textContent = part.b;
-  }
-}
-
-// Fill the stats strip under the figure for a band, or with what a selection
-// without gap statistics highlights; with nothing selected the strip is
-// hidden (the figure carries the resting story itself).
-function fillDelta(el, state, band, sel = null) {
-  el.replaceChildren();
-  const active = Boolean(sel && (sel.model || sel.harness));
-  el.hidden = !band && !active;
-  if (el.hidden) return;
-  const acc = state.spec.accrual;
-  const head = h('div', 'acc-delta-head', el);
-  if (!band) {
-    const curves = curvesFor(state);
-    if (active) {
-      // an active selection without gap statistics: say what is in full color
-      const hi = curves.filter((c) => matches(c, sel));
-      head.appendChild(document.createTextNode(`${hi.length} of ${curves.length} systems highlighted`));
-      const hint = h('span', 'acc-delta-hint', head);
-      hint.textContent = 'select a model with two or more systems, and no harness, to shade the gap between their curves and see its exact statistics here';
-      const list = h('ul', 'acc-delta-list', el);
-      deltaLine(list, [`In full color: ${hi.map((c) => c.label).join(', ')}.`]);
-    }
-    return;
-  }
-  const F = FORMAT[band.metric];
-  const model = acc.models.find((m) => m.key === band.model);
-  const { a, b } = band;
-  const sw = h('span', 'fr-swatch', head);
-  sw.style.background = state.ctx.resolve(model ? model.color : '@muted');
-  head.appendChild(document.createTextNode(
-    band.kind === 'pair'
-      ? `${model ? model.label : band.model}: ${a.name} vs ${b.name}`
-      : `${model ? model.label : band.model}: ${band.n_curves} systems`,
-  ));
-  const hint = h('span', 'acc-delta-hint', head);
-  hint.textContent = band.kind === 'pair'
-    ? 'shaded: gap between the curves over the spend both systems made · dotted: endpoint difference'
-    : `shaded: envelope of all ${band.n_curves} systems over the spend every one of them made · dotted: cheapest vs most expensive endpoint`;
-  const list = h('ul', 'acc-delta-list', el);
-  if (band.mixed_routes) {
-    deltaLine(list, ['Caveat: this contrast mixes an existing cell with an Arena cross-family cell (the same model run through the Arena serving route in a later execution epoch); route or epoch may confound it, and these band statistics are descriptive accounting, not a controlled comparison.']);
-  }
-  if (band.kind === 'pair') {
-    const gap = band.mean_gap_equal_spend; // b − a
-    const leader = gap >= 0 ? b.name : a.name;
-    const parts = [`At equal spend (up to ${F.text(band.x_shared)} per rollout), ${leader} leads by `, { b: pct(Math.abs(gap)) }, ' resolved rate on average'];
-    if (Math.min(band.a_lead_share, band.b_lead_share) > 0.05) {
-      const share = gap >= 0 ? band.b_lead_share : band.a_lead_share; // the named leader's own share
-      parts.push(` (the curves cross; ${leader} leads over ${Math.round(share * 100)}% of that range)`);
-    }
-    parts.push('.');
-    deltaLine(list, parts);
-    if (band.y_shared > 0) {
-      const extra = band.mean_extra_resource_equal_share; // b − a
-      const payer = extra >= 0 ? b.name : a.name;
-      deltaLine(list, [`To reach the same resolved rate (up to ${pct(band.y_shared)}), ${payer} spends `, { b: `${F.text(Math.abs(extra))} more per rollout` }, ' on average.']);
-    }
-    const finish = Math.abs(band.dy_end) < 0.0005
-      ? [' and ends at the same resolved rate.']
-      : [' and ends ', { b: `${pct(Math.abs(band.dy_end))} ${band.dy_end > 0 ? 'higher' : 'lower'}` }, '.'];
-    deltaLine(list, [`Endpoints: ${b.name} spends `, { b: `${F.text(band.dx_end)} more per rollout` }, ` than ${a.name}`, ...finish]);
-  } else {
-    deltaLine(list, [`At equal spend (up to ${F.text(band.x_shared)} per rollout), the best and worst system differ by `, { b: pct(band.mean_spread_equal_spend) }, ' resolved rate on average and up to ', { b: pct(band.max_spread_equal_spend) }, '.']);
-    deltaLine(list, [`Endpoints: ${a.name} ${F.text(a.x_end)} → ${b.name} ${F.text(b.x_end)} per rollout (`, { b: `+${F.text(band.dx_end)}` }, `); resolved rates ${pct(band.y_end_min)}–${pct(band.y_end_max)}.`]);
-  }
-}
-
 // -------------------------------------------------------------------- figure
 
 async function render(state) {
@@ -600,7 +526,6 @@ async function render(state) {
   }
   state.plotted = true;
   state.dirty = false;
-  fillDelta(state.delta, state, band, active ? sel : null);
 }
 
 // ------------------------------------------------------------ opening story
@@ -815,10 +740,6 @@ export function mountAccrual(body, spec, ctx) {
   const host = h('div', 'acc-host', stage);
   state.plot = plot;
   state.host = host;
-  // the stats strip sits under the figure and appears only for a selection
-  const delta = h('div', 'acc-delta', body);
-  delta.hidden = true;
-  state.delta = delta;
 
   // `tour` is true only when the story ran to its end on its own: a story cut
   // short by a click hands the figure to the reader without touring

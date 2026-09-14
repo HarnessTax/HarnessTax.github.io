@@ -122,7 +122,7 @@ const io = new IntersectionObserver((entries) => {
   }
 }, { rootMargin: '250px' });
 
-// ---------------------------------------------------------------- table twin
+// ------------------------------------------------------------- table cards
 
 function statusChip(status) {
   const chip = document.createElement('span');
@@ -366,7 +366,7 @@ export async function chartCard(name, { collapsed = false, layout = null } = {})
     plot = document.createElement('div');
     plot.className = 'harness-body';
     ctl = mountHarness(plot, spec, ctx);
-    if (ctl.seg) actions.appendChild(ctl.seg); // the card's own notes / table buttons
+    if (ctl.seg) actions.appendChild(ctl.seg);
   } else if (spec.race) {
     plot = document.createElement('div');
     plot.className = 'race-body';
@@ -382,46 +382,6 @@ export async function chartCard(name, { collapsed = false, layout = null } = {})
   }
   plot._ab = { spec, ctl };
   body.appendChild(plot);
-
-  const notes = (spec.frontier && spec.frontier.notes) || (spec.accrual && spec.accrual.notes)
-    || (spec.harness && spec.harness.notes) || (spec.race && spec.race.notes);
-  if (notes) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = 'notes';
-    btn.setAttribute('aria-pressed', 'false');
-    const p = document.createElement('p');
-    p.className = 'card-notes';
-    p.textContent = notes;
-    p.hidden = true;
-    body.appendChild(p);
-    btn.addEventListener('click', () => {
-      const show = btn.getAttribute('aria-pressed') !== 'true';
-      btn.setAttribute('aria-pressed', String(show));
-      p.hidden = !show;
-    });
-    actions.appendChild(btn);
-  }
-
-  if (spec.table) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = 'table';
-    btn.setAttribute('aria-pressed', 'false');
-    let tableEl = null;
-    btn.addEventListener('click', () => {
-      const showTable = btn.getAttribute('aria-pressed') !== 'true';
-      btn.setAttribute('aria-pressed', String(showTable));
-      if (showTable && !tableEl) {
-        tableEl = document.createElement('div');
-        renderTable(tableEl, spec.table);
-        body.appendChild(tableEl);
-      }
-      if (tableEl) tableEl.style.display = showTable ? '' : 'none';
-      plot.style.display = showTable ? 'none' : '';
-    });
-    actions.appendChild(btn);
-  }
 
   io.observe(plot);
   return el;

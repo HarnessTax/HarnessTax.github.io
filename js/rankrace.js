@@ -5,15 +5,15 @@
 // "Model · Harness" to the left. Every system is on the board from the first
 // frame; one shared sweep value rises and every bar is read off the system's
 // exact cumulative curve (cheapest rollouts first: x cumulative cost per
-// rollout, y cumulative resolved rate, spec.race.systems[*].curve):
+// rollout, y cumulative success rate, spec.race.systems[*].curve):
 //   accuracy-rank-race  the sweep is a shared spend per rollout; a bar is the
-//                       system's cumulative resolved rate within that spend
+//                       system's cumulative success rate within that spend
 //                       (the height of its cost-scaling curve there), ranked
 //                       highest first; n/a until it has a solve in budget
-//   cost-rank-race      the sweep is a resolved-rate target; a bar is the
+//   cost-rank-race      the sweep is a success-rate target; a bar is the
 //                       cheapest-first spend at which the system's curve
 //                       reaches the target, ranked cheapest first; n/a once
-//                       the target is beyond the system's resolved rate
+//                       the target is beyond the system's success rate
 // Bars grow with the sweep and rows slide to their new rank; the systems
 // without a value follow the ranked ones, faded, ordered by how close they
 // are to qualifying. The card autoplays when it scrolls into view (once), has
@@ -100,7 +100,7 @@ const label = (c) => `${c.model_label} · ${c.harness_label}`;
 
 export function mountRankRace(body, spec, ctx) {
   const R = spec.race;
-  const bySpend = R.sweep.key === 'cost'; // accuracy board: spend sweeps, bars are resolved rates
+  const bySpend = R.sweep.key === 'cost'; // accuracy board: spend sweeps, bars are success rates
   const systems = R.systems.map((c) => ({ ...c })).filter((c) => c.curve && c.curve.x && c.curve.x.length > 1);
   const N = systems.length;
   const fmtSweep = bySpend ? fmtUSD : fmtPct1;
@@ -191,8 +191,8 @@ export function mountRankRace(body, spec, ctx) {
     ? ` · off-axis (beyond ${axis.fmt(axis.max)}, bar broken): ${systems.filter((c) => axis.isOff(c.cost)).map((c) => `${label(c)} (${fmtUSD(c.cost)})`).join(', ')}`
     : '';
   fn.textContent = bySpend
-    ? 'bar = cumulative resolved rate within the shared spend (the exact height of the system\'s cost-scaling curve there) · colour = model · badge = harness · n/a = no solved rollout within this spend yet · end cap = every rollout counted, the bar has reached the system\'s resolved rate'
-    : `bar = cheapest-first spend per rollout at which the system reaches the resolved-rate target (read off its cost-scaling curve) · colour = model · badge = harness · n/a = the target is beyond the system's resolved rate (its bar stays at its full spend, faded)${offNote}`;
+    ? 'bar = cumulative success rate within the shared spend (the exact height of the system\'s cost-scaling curve there) · colour = model · badge = harness · n/a = no solved rollout within this spend yet · end cap = every rollout counted, the bar has reached the system\'s success rate'
+    : `bar = cheapest-first spend per rollout at which the system reaches the success-rate target (read off its cost-scaling curve) · colour = model · badge = harness · n/a = the target is beyond the system's success rate (its bar stays at its full spend, faded)${offNote}`;
 
   // ---------- theme ----------
   let SURFACE = '#fcfcfb';

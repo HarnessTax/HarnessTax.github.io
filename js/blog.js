@@ -9,6 +9,13 @@
 // benchmark pills above the card shows one pane at a time (after the chart
 // switchers on openai.com's model posts), so a plot drawn for two benchmarks
 // takes one slot in the column.
+// A citation is a superscript linking to its reference entry (`#ref-N`);
+// the SPA routes on the hash, so a plain click scrolls there without changing
+// it. For opening in a new tab (modifier or middle click, copied link) the
+// anchors are rewritten to `#blog/<slug>/ref-N` once mounted, and a `#ref-N`
+// page hash (an older link) is routed here by app.js; both land on the entry.
+// The tab shows the post and nothing else: build diagnostics (missing images
+// or charts) go to the console, and the page title becomes the post's.
 // Drafts are listed in the site-root manifest blog.json, written by
 // dashboard/blog.py publish() after the build and served no-cache, rather
 // than in the boot manifest: build.py stays byte-identical to its sealed
@@ -152,9 +159,9 @@ function postNav(posts, active) {
   return nav;
 }
 
-// `draft: false` renders the published page rather than the in-dashboard
-// preview: no source/word-count/build meta line and no post switcher, so the
-// article stands on its own. The prose and the live figures are identical.
+// The article stands on its own in either mode; `draft: false` (the standalone
+// public page) additionally drops the post switcher shown when a build carries
+// several drafts. The prose and the live figures are identical.
 export async function route(hash, boot, { draft = true } = {}) {
   const root = document.getElementById('blog-root');
   root.setAttribute('aria-busy', 'true');
@@ -164,27 +171,40 @@ export async function route(hash, boot, { draft = true } = {}) {
       root.replaceChildren(note('No blog drafts in this build. Add blog/<slug>.md and rebuild.'));
       return;
     }
-    const wanted = hash.startsWith('#blog/') ? decodeURIComponent(hash.slice(6)) : posts[0].slug;
+    const [wanted, anchor] = hash.startsWith('#blog/') ? decodeURIComponent(hash.slice(6)).split('/')
+      : hash.startsWith('#ref-') ? [posts[0].slug, hash.slice(1)] : [posts[0].slug, ''];
     const post = posts.find((p) => p.slug === wanted) || posts[0];
     const data = await getJSON(post.path);
-    const meta = document.createElement('p');
-    meta.className = 'prose-meta';
-    const missing = data.missing_images && data.missing_images.length
-      ? ` · ${data.missing_images.length} missing image(s): ${data.missing_images.join(', ')}` : '';
-    const missingCharts = data.missing_charts && data.missing_charts.length
-      ? ` · unknown dashboard chart(s): ${data.missing_charts.join(', ')}` : '';
-    const live = (data.charts || []).length ? ` · ${data.charts.length} live chart(s)` : '';
-    meta.textContent = `Draft preview · ${data.source} · ${data.words.toLocaleString()} words${live}`
-      + ` · built ${boot.generated}${data.rendered ? '' : ' · markdown renderer unavailable, showing source'}${missing}${missingCharts}`;
+    if (data.missing_images && data.missing_images.length) console.warn(`blog: missing image(s): ${data.missing_images.join(', ')}`);
+    if (data.missing_charts && data.missing_charts.length) console.warn(`blog: unknown dashboard chart(s): ${data.missing_charts.join(', ')}`);
+    if (!data.rendered) console.warn('blog: markdown renderer unavailable at build time, showing source');
+    document.title = data.title || post.title;
     const article = document.createElement('article');
     article.className = 'prose'; // edgeless: the text sits on the page, only the figures' cards carry a border
     article.innerHTML = data.html;
+    const jumpTo = (target) => {
+      article.querySelectorAll('.ref-hit').forEach((el) => el.classList.remove('ref-hit'));
+      target.classList.add('ref-hit');
+      target.scrollIntoView({ block: 'center' });
+    };
+    for (const a of article.querySelectorAll('a[href^="#ref-"]')) a.dataset.entry = a.getAttribute('href').slice(1);
+    for (const a of article.querySelectorAll('a[data-entry]')) a.href = `#blog/${encodeURIComponent(post.slug)}/${a.dataset.entry}`;
+    article.addEventListener('click', (ev) => {
+      if (ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return; // the browser's new-tab gesture
+      const a = ev.target.closest('a[data-entry]');
+      const target = a ? document.getElementById(a.dataset.entry) : null;
+      if (!target || !article.contains(target)) return;
+      ev.preventDefault();
+      jumpTo(target);
+    });
     await Promise.all([...article.querySelectorAll('figure.dash-figure')]
       .map((fig) => (fig.classList.contains('dash-switch') ? mountSwitch(fig) : mountFigure(fig))));
-    const children = draft ? [meta, article] : [article];
+    const children = [article]; // the post alone: build diagnostics went to the console above
     if (draft && posts.length > 1) children.unshift(postNav(posts, post.slug));
     root.replaceChildren(...children);
-    window.scrollTo(0, 0);
+    const entry = anchor ? document.getElementById(anchor) : null;
+    if (entry && article.contains(entry)) jumpTo(entry);
+    else window.scrollTo(0, 0);
   } catch (err) {
     root.replaceChildren(note(`failed to load draft: ${err.message}`));
   } finally {
