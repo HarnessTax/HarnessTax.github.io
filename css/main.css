@@ -637,13 +637,16 @@ details.info { margin: 6px 0 6px 22px; }
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 5px 10px;
-  align-items: center;
+  align-items: start;
   flex: 1;
 }
+/* the label's line box is one pill tall, so it centres on the row's first
+   line of pills even when the row wraps or carries a control after them */
 .fr-pill-label {
   color: var(--muted);
   font-size: 10.5px;
   font-weight: 650;
+  line-height: 24px;
   letter-spacing: .05em;
   text-transform: uppercase;
 }
@@ -1007,8 +1010,8 @@ html[data-view="blog"] .masthead { justify-content: flex-end; padding-bottom: 0;
 .prose details.fold { margin: calc(var(--blog-root) * 3.2) auto calc(var(--blog-root) * 0.9); }
 .prose details.fold > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 0.5em; color: var(--ink); font-size: inherit; } /* the trace viewer's `details > summary` rule mutes and shrinks summaries */
 .prose details.fold > summary::-webkit-details-marker { display: none; }
-.prose details.fold > summary::before { content: "▸"; font-family: var(--blog-sans); color: var(--muted); font-size: calc(var(--blog-root) * 1.1); flex: none; }
-.prose details.fold[open] > summary::before { content: "▾"; }
+.prose details.fold > summary::after { content: "▸"; font-family: var(--blog-sans); color: var(--muted); font-size: calc(var(--blog-root) * 1.1); flex: none; margin-left: auto; } /* arrow at the column's right edge: the heading stays flush left with the other h2s */
+.prose details.fold[open] > summary::after { content: "▾"; }
 .prose details.fold > summary h2 { margin: 0; }
 .prose details.fold[open] > summary { margin-bottom: calc(var(--blog-root) * 0.9); }
 /* live dashboard figures (`![caption](dashboard:<chart>)`): the chart's own card
@@ -1018,9 +1021,16 @@ html[data-view="blog"] .masthead { justify-content: flex-end; padding-bottom: 0;
 .dash-figure .card { padding: 12px 16px 12px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; } /* the dashboard's own type inside a live card, not the essay's serif */
 .dash-figure .card-toggle { pointer-events: none; }
 .dash-figure .card-chevron { display: none; }
-.dash-figure .card-head h3 { font-size: 14px; }
-.dash-figure .card-sub { font-size: 12.5px; }
+/* `.prose h3` / `.prose p` (the essay's heading and paragraph margins, auto side
+   margins) match a live card's title and subtitle too and would float the title
+   34px below the card's edge; the card keeps the dashboard's spacing, title centred */
+.dash-figure .card-head h3 { font-size: 14px; margin: 0 auto; }
+.dash-figure .card-sub { font-size: 12.5px; margin: 2px 0 8px; }
 .dash-figure .dash-missing { color: var(--critical); }
+/* the status line (count, hints) moves under the plot in a live card (blog.js):
+   in the column it wraps, and its text changes with the selection and the
+   tour, so above the plot it would shift the axes; two lines are reserved */
+.dash-figure .fr-status { display: block; margin: 8px 0 0; padding-left: 0; min-height: calc(2 * 1.45 * 11.5px); }
 /* a switch figure (`dash-switch`: the same plot on each benchmark) shows one
    pane at a time under a row of benchmark pills, after the chart switchers on
    openai.com's model posts: the chosen pill is filled with the ink colour */

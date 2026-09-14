@@ -23,7 +23,7 @@
 // precomputed in spec.accrual (dashboard/charts.py::_cumulative_accrual_spec);
 // this file only draws.
 import { h, s, shape, createPills } from './pills.js';
-import { LABEL, NEAR_ORDER, textWidth, labelSize, placeLabels, labelAnnotation, labelTextAnchor, edgePoint, intersects } from './labels.js';
+import { LABEL, NEAR_ORDER, COST, textWidth, labelSize, placeLabels, labelAnnotation, labelTextAnchor, edgePoint, intersects } from './labels.js';
 import { badge, badgeImage, rgba, imageSpec, sizeImages, bindZoomSync } from './icons.js';
 import { ZOOM_HINT } from './frontier.js';
 import { attachViewport } from './viewport.js';
@@ -238,16 +238,17 @@ function arrowTip(curve, color, surface, parent) {
 }
 
 // The drawn curves as pixel boxes a label keeps clear of: a highlighted curve
-// counts like a badge (a label on it is never clean), a faint one lightly, so
-// a label sits on faint curves only where nothing better exists. Long
-// segments are split so the boxes hug the line.
+// costs a label about what a leader would, a faint one little, so a label
+// sits on faint curves rather than take a leader and on a highlighted one
+// only when the leader would be long. Long segments are split so the boxes
+// hug the line.
 function curveObstacles(state, geo, hi) {
   const out = [];
   const xmax = geo.xr[1];
   for (const c of curvesFor(state)) {
     const { smooth } = c.series[state.metric];
     const pts = clipCurve(smooth.x, smooth.y, xmax).map(([x, y]) => [geo.x2p(x), geo.y2p(y)]);
-    const weight = hi.includes(c) ? 10 : 3;
+    const weight = hi.includes(c) ? 6 : 2;
     for (let i = 1; i < pts.length; i++) {
       const [ax, ay] = pts[i - 1];
       const [bx, by] = pts[i];
@@ -257,7 +258,7 @@ function curveObstacles(state, geo, hi) {
         const x1 = ax + ((bx - ax) * (k + 1)) / n;
         const y0 = ay + ((by - ay) * k) / n;
         const y1 = ay + ((by - ay) * (k + 1)) / n;
-        out.push({ x0: Math.min(x0, x1) - 1, x1: Math.max(x0, x1) + 1, y0: Math.min(y0, y1) - 1, y1: Math.max(y0, y1) + 1, weight });
+        out.push({ x0: Math.min(x0, x1) - 1, x1: Math.max(x0, x1) + 1, y0: Math.min(y0, y1) - 1, y1: Math.max(y0, y1) + 1, weight, group: c.id });
       }
     }
   }
@@ -302,10 +303,10 @@ function labelPlan(state, geo, hi, offAxis, obstacles = []) {
     const r = END_R + 1;
     return { x0: px - r, x1: px + r, y0: py - r, y1: py + r, weight };
   };
-  const markers = curvesFor(state).filter((c) => !labelled.includes(c)).map((c) => badgeBox(anchorOf(c, metric, xmax), 12));
-  for (const g of groups) for (const m of g.members) if (m.anchor !== g.anchor) markers.push(badgeBox(m.anchor, 8));
+  const markers = curvesFor(state).filter((c) => !labelled.includes(c)).map((c) => badgeBox(anchorOf(c, metric, xmax), 6));
+  for (const g of groups) for (const m of g.members) if (m.anchor !== g.anchor) markers.push(badgeBox(m.anchor, 12));
   const boxes = placeLabels(items, geo, {
-    order: LABEL_ORDER, sequence: 'given', gap: LABEL_GAP, bias: 'top-left', joint: true,
+    order: LABEL_ORDER, sequence: 'given', gap: LABEL_GAP, bias: { right: 3, down: 6 },
     obstacles: curveObstacles(state, geo, hi).concat(obstacles), markers,
     reach: geo.W < 900 ? 16 : 8, // a reading-column figure: reach the top margin rather than overlap
   });
@@ -355,10 +356,13 @@ function connectorTrace(band, muted, xmax) {
   };
 }
 
-// The dotted L between the two furthest endpoints, its two annotations and
-// the pixel boxes they occupy (so endpoint labels keep clear of them).
-// `markers` are the highlighted endpoint markers (pixel boxes): the spend
-// caption moves above the dotted line when it would sit on one of them.
+// The dotted L between the two furthest endpoints, its captions and the
+// pixel boxes they occupy (so endpoint labels keep clear of them).
+// `markers` are the highlighted endpoint markers (pixel boxes). The spend
+// caption rides the horizontal leg when the leg is long enough to carry it,
+// on the side away from the vertical leg (or the side without a badge); a
+// shorter leg hands it to the rate caption beside the vertical leg, which
+// then reads "+$0.118 / rollout · +2.3%". Captions stay inside the plot.
 function connector(band, metric, muted, geo, xrange, markers = []) {
   const F = FORMAT[metric];
   const { a, b } = band;
@@ -371,36 +375,46 @@ function connector(band, metric, muted, geo, xrange, markers = []) {
   const bx = geo.x2p(bxData);
   const ay = geo.y2p(a.y_end);
   const by = geo.y2p(b.y_end);
-  boxes.push({ x0: Math.min(ax, bx), x1: Math.max(ax, bx), y0: ay - 3, y1: ay + 3, weight: 10 });
-  boxes.push({ x0: bx - 3, x1: bx + 3, y0: Math.min(ay, by), y1: Math.max(ay, by), weight: 10 });
-  if (band.dx_end > 0.02 * xrange) {
-    const text = `+${F.text(band.dx_end)} / rollout${clipped ? ' →' : ''}`;
-    const w = textWidth(text, SMALL_FONT);
-    const cx = (ax + bx) / 2;
-    const below = { x0: cx - w / 2, x1: cx + w / 2, y0: ay + 6, y1: ay + 20, weight: 10 };
-    const above = { x0: cx - w / 2, x1: cx + w / 2, y0: ay - 20, y1: ay - 6, weight: 10 };
+  const left = geo.l + 2;
+  const right = geo.W - 2;
+  boxes.push({ x0: Math.min(ax, bx), x1: Math.max(ax, bx), y0: ay - 3, y1: ay + 3, weight: 10, group: 'link' });
+  boxes.push({ x0: bx - 3, x1: bx + 3, y0: Math.min(ay, by), y1: Math.max(ay, by), weight: 10, group: 'link' });
+  const spend = band.dx_end > 0.02 * xrange ? `+${F.text(band.dx_end)} / rollout${clipped ? ' →' : ''}` : null;
+  const rate = Math.abs(band.dy_end) > 0.0005 ? pct(band.dy_end, true) : null;
+  const spendW = spend ? textWidth(spend, SMALL_FONT) : 0;
+  const along = Boolean(spend) && Math.abs(bx - ax) >= spendW + 8;
+  if (along) {
+    const mid = (ax + bx) / 2;
+    const cx = Math.min(Math.max(mid, left + spendW / 2), right - spendW / 2);
+    const below = { x0: cx - spendW / 2, x1: cx + spendW / 2, y0: ay + 6, y1: ay + 20, weight: COST.words };
+    const above = { x0: cx - spendW / 2, x1: cx + spendW / 2, y0: ay - 20, y1: ay - 6, weight: COST.words };
     const hits = (box) => markers.some((m) => intersects(box, m, 1));
-    const flip = hits(below) && !hits(above);
+    let flip = by > ay; // the vertical leg (and the rate caption) hang below: caption above
+    if (flip && hits(above) && !hits(below)) flip = false;
+    if (!flip && hits(below) && !hits(above)) flip = true;
     annotations.push({
-      x: (a.x_end + bxData) / 2, y: a.y_end, text,
-      showarrow: false, xanchor: 'center', yanchor: flip ? 'bottom' : 'top', yshift: flip ? 6 : -6,
+      x: (a.x_end + bxData) / 2, y: a.y_end, text: spend,
+      showarrow: false, xanchor: 'center', yanchor: flip ? 'bottom' : 'top', xshift: cx - mid, yshift: flip ? 6 : -6,
       font: { color: muted, size: 11 },
     });
     boxes.push(flip ? above : below);
   }
-  if (Math.abs(band.dy_end) > 0.0005) {
-    const text = pct(band.dy_end, true);
-    // at the frame edge the text moves to the left of the vertical
-    const left = clipped || bx + 8 + textWidth(text, SMALL_FONT) > geo.W - 2;
+  const side = [along ? null : spend, rate].filter(Boolean).join(' · ');
+  if (side) {
+    const w = textWidth(side, SMALL_FONT);
+    // beside the vertical leg, on the side with room (at the frame edge, the left)
+    const roomRight = right - (bx + 8);
+    const roomLeft = (bx - 8) - left;
+    const onLeft = clipped || (w > roomRight && roomLeft > roomRight);
+    const cy = (ay + by) / 2;
     annotations.push({
-      x: bxData, y: (a.y_end + b.y_end) / 2, text,
-      showarrow: false, xanchor: left ? 'right' : 'left', yanchor: 'middle', xshift: left ? -8 : 8,
+      x: bxData, y: (a.y_end + b.y_end) / 2, text: side,
+      showarrow: false, xanchor: onLeft ? 'right' : 'left', yanchor: 'middle', xshift: onLeft ? -8 : 8,
       font: { color: muted, size: 11 },
     });
-    const w = textWidth(text, SMALL_FONT);
-    boxes.push(left
-      ? { x0: bx - 8 - w, x1: bx - 8, y0: (ay + by) / 2 - 7, y1: (ay + by) / 2 + 7, weight: 10 }
-      : { x0: bx + 8, x1: bx + 8 + w, y0: (ay + by) / 2 - 7, y1: (ay + by) / 2 + 7, weight: 10 });
+    boxes.push(onLeft
+      ? { x0: bx - 8 - w, x1: bx - 8, y0: cy - 7, y1: cy + 7, weight: COST.words }
+      : { x0: bx + 8, x1: bx + 8 + w, y0: cy - 7, y1: cy + 7, weight: COST.words });
   }
   return { annotations, boxes };
 }

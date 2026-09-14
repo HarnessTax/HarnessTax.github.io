@@ -26,7 +26,7 @@ import { h, s, createPills } from './pills.js';
 import { badge, badgeImage, rgba, imageSpec, sizeImages, bindZoomSync } from './icons.js';
 import { HARNESS_COLOR } from './palette.js';
 import { attachViewport } from './viewport.js';
-import { LABEL, NEAR_ORDER, labelSize, placeLabels, labelAnnotation, labelTextAnchor, edgePoint, intersects } from './labels.js';
+import { LABEL, NEAR_ORDER, COST, labelSize, placeLabels, labelAnnotation, labelTextAnchor, edgePoint, intersects } from './labels.js';
 
 // shared by the SVG and the plotly figure; the top margin leaves room for a
 // label row above the highest frontier points (labels prefer above / left)
@@ -233,13 +233,16 @@ function badgeImageSpecs(points, geo, sizes, surface, opacityOf) {
 const axesOf = (geo) => ({ x0: geo.plotXr[0], x1: geo.plotXr[1], y0: geo.yr[0], y1: geo.yr[1], iw: geo.iw, ih: geo.ih });
 
 // Boxes labels must keep clear of: y tick labels and the frontier staircase.
+// tick text is words (a label never covers it); the staircase (one group, so
+// a seat on a step's corner pays once) is priced under a leader, so a label
+// sits over it rather than take a long leader
 function labelObstacles(geo, frontier) {
-  const out = geo.yt.values.map((v) => ({ x0: 0, x1: MARGIN.l - 4, y0: geo.ys(v) - 7, y1: geo.ys(v) + 7, weight: 10 }));
+  const out = geo.yt.values.map((v) => ({ x0: 0, x1: MARGIN.l - 4, y0: geo.ys(v) - 7, y1: geo.ys(v) + 7, weight: COST.words }));
   for (let i = 1; i < frontier.length; i++) {
     const a = frontier[i - 1];
     const b = frontier[i];
-    out.push({ x0: Math.min(a.px, b.px), x1: Math.max(a.px, b.px), y0: a.py - 2, y1: a.py + 2, weight: 10 });
-    out.push({ x0: b.px - 2, x1: b.px + 2, y0: Math.min(a.py, b.py), y1: Math.max(a.py, b.py), weight: 10 });
+    out.push({ x0: Math.min(a.px, b.px), x1: Math.max(a.px, b.px), y0: a.py - 2, y1: a.py + 2, weight: 10, group: 'staircase' });
+    out.push({ x0: b.px - 2, x1: b.px + 2, y0: Math.min(a.py, b.py), y1: Math.max(a.py, b.py), weight: 10, group: 'staircase' });
   }
   return out;
 }
@@ -254,8 +257,10 @@ const LABEL_GAP = 3; // px between a badge's edge and its label
 function placeFrontierLabels(targets, points, frontier, geo, sizes, extraObstacles = []) {
   const radius = (p) => (p.frontier ? sizes.frontier : sizes.dominated) / 2;
   const items = targets.map((p) => ({ px: p.px, py: p.py, r: radius(p), ...labelSize(p.model_label, p.harness_label) }));
+  // the unlabelled badges are dimmed (or small) in every view that labels
+  // these targets: covering one costs less than a leader
   const others = points.filter((p) => !targets.includes(p))
-    .map((p) => { const r = radius(p) + 1; return { x0: p.px - r, x1: p.px + r, y0: p.py - r, y1: p.py + r, weight: 12 }; });
+    .map((p) => { const r = radius(p) + 1; return { x0: p.px - r, x1: p.px + r, y0: p.py - r, y1: p.py + r, weight: 4 }; });
   return placeLabels(items, geo, {
     order: NEAR_ORDER.frontier, sequence: 'given', gap: LABEL_GAP, bias: 'top-left', joint: true,
     obstacles: labelObstacles(geo, frontier).concat(extraObstacles), markers: others,
@@ -325,18 +330,19 @@ function annotationsFor(state, geo, plan) {
 // boxes labels should keep clear of (thin, low weight).
 function intervalObstacles(targets, geo) {
   const out = [];
-  for (const p of targets) {
+  targets.forEach((p, i) => {
+    const group = `ci${i}`; // one point's two whiskers charge a label once
     if (p.x_ci) {
       const lo = geo.logX ? Math.max(p.x_ci[0], p.x * 1e-6, geo.xr[0]) : Math.max(p.x_ci[0], geo.xr[0]);
       const hi = Math.min(p.x_ci[1], geo.xr[1]);
-      if (hi > lo) out.push({ x0: geo.xs(lo), x1: geo.xs(hi), y0: p.py - 2, y1: p.py + 2, weight: 4 });
+      if (hi > lo) out.push({ x0: geo.xs(lo), x1: geo.xs(hi), y0: p.py - 2, y1: p.py + 2, weight: 4, group });
     }
     if (p.y_ci) {
       const top = Math.min(p.y_ci[1], geo.yr[1]);
       const bottom = Math.max(p.y_ci[0], geo.yr[0]);
-      if (top > bottom) out.push({ x0: p.px - 2, x1: p.px + 2, y0: geo.ys(top), y1: geo.ys(bottom), weight: 4 });
+      if (top > bottom) out.push({ x0: p.px - 2, x1: p.px + 2, y0: geo.ys(top), y1: geo.ys(bottom), weight: 4, group });
     }
-  }
+  });
   return out;
 }
 

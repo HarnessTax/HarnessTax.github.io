@@ -34,13 +34,16 @@ async function loadPosts() {
   }
 }
 
-// The dashboard draws its headline figures about 1150px wide; the reading
-// column is around 700px, so the plotly cards get more height, and the
-// cost-scaling card a taller top margin where its endpoint labels can stack
-// instead of overlapping. `?h=<px>` on the dashboard: reference sets the height.
+// The dashboard draws its headline figures about 1150px wide at heights
+// chosen for that width; in the 736px reading column the frontier and
+// cost-scaling plots keep their type, markers and margins at full size and
+// give up some height instead, so they do not stand nearly square. The
+// cost-scaling card keeps a taller top margin where its endpoint labels can
+// stack instead of overlapping. `?h=<px>` on the dashboard: reference sets
+// the height.
 const COLUMN_LAYOUT = {
-  frontier: { height: 460 },
-  accrual: { height: 600, margin: { t: 96 } },
+  frontier: { height: 400 },
+  accrual: { height: 520, margin: { t: 96 } },
 };
 function columnLayout(spec, forcedHeight) {
   const patch = spec.frontier ? COLUMN_LAYOUT.frontier : spec.accrual ? COLUMN_LAYOUT.accrual : null;
@@ -48,9 +51,34 @@ function columnLayout(spec, forcedHeight) {
   return forcedHeight ? { ...(patch || {}), height: forcedHeight } : patch;
 }
 
+// The dashboard titles a card "<benchmark> — <figure>" with the figure half in
+// lower case ("SWE-bench Lite — cost scaling: …"); in the post it reads as a
+// figure title, so that half starts with a capital ("— Cost scaling: …").
+// charts.py is provenance-bound, so the post's cards are retitled here.
+function postTitle(title) {
+  const text = String(title || '');
+  const sep = ' — ';
+  const at = text.indexOf(sep);
+  if (at < 0) return text;
+  const cut = at + sep.length;
+  return text.slice(0, cut) + text.charAt(cut).toUpperCase() + text.slice(cut + 1);
+}
+
+// The card's status line (observation count, selection hints) sits at the
+// end of the harness pill row on the dashboard; in the column it wraps, and
+// its text changes with the selection and the tour, so there it would shift
+// the plot. It moves under the plot (the same element, so the card keeps
+// updating it).
+function statusBelow(card) {
+  const status = card.querySelector('.fr-status');
+  const body = card.querySelector('.card-body');
+  if (status && body) body.appendChild(status);
+  return card;
+}
+
 async function liveCard(name, forcedHeight) {
-  const card = await chartCard(name, { layout: (spec) => columnLayout(spec, forcedHeight) });
-  if (card) return card;
+  const card = await chartCard(name, { layout: (spec) => columnLayout(spec, forcedHeight), title: postTitle });
+  if (card) return statusBelow(card);
   const p = note(`dashboard chart “${name}” is not in this build`);
   p.classList.add('dash-missing');
   return p;

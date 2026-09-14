@@ -323,10 +323,11 @@ function card(title, subtitle, { collapsed = false } = {}) {
 
 // `layout` (a patch object, or a function of the loaded spec returning one) is
 // merged over the plotly layout for this card only (margins merge key by key):
-// the Blog tab draws the same figures in a reading column and gives them more
-// height and label room. The cached spec is shared with the dashboard, so the
-// override lives on a copy.
-export async function chartCard(name, { collapsed = false, layout = null } = {}) {
+// the Blog tab draws the same figures in a reading column and fits their
+// height to it. `title` (a string, or a function of the spec's title) heads
+// this card instead of the spec's own title. The cached spec is shared with
+// the dashboard, so the overrides live on a copy.
+export async function chartCard(name, { collapsed = false, layout = null, title = null } = {}) {
   const boot = window.__AB_BOOT__;
   const url = boot.charts[name];
   if (!url) return null; // missing artifact -> the card removes itself
@@ -343,7 +344,8 @@ export async function chartCard(name, { collapsed = false, layout = null } = {})
     if (patch.margin) next.margin = { ...(base.margin || {}), ...patch.margin };
     spec = { ...spec, plotly: { ...spec.plotly, layout: next } };
   }
-  const { el, head, body } = card(spec.title, spec.subtitle, { collapsed });
+  const heading = typeof title === 'function' ? title(spec.title) : (title || spec.title);
+  const { el, head, body } = card(heading, spec.subtitle, { collapsed });
   const actions = document.createElement('div');
   actions.className = 'card-actions';
   head.appendChild(actions);
