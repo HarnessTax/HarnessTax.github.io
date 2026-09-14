@@ -1002,7 +1002,8 @@ details.info { margin: 6px 0 6px 22px; }
 .prose hr { border: 0; border-top: 1px solid var(--grid); margin: 32px auto; }
 .prose figure { margin: 26px auto 10px; }
 .prose img { display: block; width: 100%; max-width: 100%; height: auto; margin: 0 auto; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
-.prose p > em:only-child { display: block; color: var(--ink2); font-family: var(--blog-sans); font-style: normal; font-size: calc(var(--blog-root) * 0.84); line-height: 1.5; margin-bottom: 28px; } /* captions: sans, like flashml's figcaption */
+.prose p.caption { color: var(--ink2); font-family: var(--blog-sans); font-size: calc(var(--blog-root) * 0.84); line-height: 1.5; margin-bottom: 28px; }
+.prose p.caption > em { font-style: normal; } /* captions (blog.py tags an italic-only paragraph): sans, like flashml's figcaption */
 .prose blockquote { margin: 16px auto; padding: 10px 16px; border-left: 3px solid var(--accent); background: var(--wash); color: var(--ink2); font-size: 16px; }
 .prose blockquote p { margin: 0 0 6px; }
 .prose code { font-family: var(--blog-mono); background: var(--code-bg); border: 1px solid var(--border); padding: 0.08em 0.34em; border-radius: 4px; font-size: 0.88em; }
