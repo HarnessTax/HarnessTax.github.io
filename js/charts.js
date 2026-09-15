@@ -373,7 +373,7 @@ export async function chartCard(name, { collapsed = false, layout = null, title 
   } else if (spec.harness) {
     plot = document.createElement('div');
     plot.className = 'harness-body';
-    ctl = mountHarness(plot, spec, { ...ctx, compact });
+    ctl = mountHarness(plot, spec, { ...ctx, compact, note });
     if (ctl.seg) actions.appendChild(ctl.seg);
   } else if (spec.race) {
     plot = document.createElement('div');
@@ -393,7 +393,8 @@ export async function chartCard(name, { collapsed = false, layout = null, title 
   // a spec's `note` is the one line that says what the marks are (the
   // agent-context card: bars are means, whiskers ±1 SD); it sits under the
   // plot, where a legend would. A caller whose figure has a caption of its
-  // own (the blog post) passes `note: false`
+  // own (the blog post) passes `note: false`, which also drops the whisker
+  // clause from the harness-effect card's footnote (harness.js)
   if (spec.note && note) {
     const note = document.createElement('p');
     note.className = 'card-note';

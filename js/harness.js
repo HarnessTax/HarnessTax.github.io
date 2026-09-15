@@ -564,11 +564,13 @@ export function mountHarness(body, spec, ctx) {
       ? 'green ring = model\'s best (cheapest; highest rate)' // the one label column serves both panels, so no name is green
       : 'green ring / green label = model\'s best (cheapest; highest rate)');
   }
-  // the muted line under the legend: what the bars and the whiskers encode (the serving-route note lives in the notes pane and the table)
+  // the muted line under the legend: what the bars and the whiskers encode (the serving-route note lives in the notes pane and the table).
+  // The whisker clause is the card's only statement of what the whiskers are, so it stays on the dashboard; a host whose
+  // caption already says it (the blog post, ctx.note === false) gets the line without it
   function renderFootnote() {
     const fn = footnoteEl;
     fn.innerHTML = '';
-    el('span', {}, fn, 'bars: cost per rollout and success rate · whisker = 95 % interval · ');
+    el('span', {}, fn, `bars: cost per rollout and success rate · ${ctx.note === false ? '' : 'whisker = 95 % interval · '}`);
     el('span', { class: 'cue' }, fn, '← is better');
     el('span', {}, fn, ' for cost, ');
     el('span', { class: 'cue' }, fn, '→ is better');

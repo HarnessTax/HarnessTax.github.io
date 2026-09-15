@@ -118,7 +118,8 @@ const inColumn = (fig) => !fig.classList.contains('dash-wide');
 
 // The post's own caption says what a figure's marks are, so a card's note
 // under the plot (the first-call context card's "Bars: mean per harness…")
-// is not mounted here.
+// is not mounted here, and the harness-effect card's footnote loses its
+// "whisker = 95 % interval" clause.
 async function liveCard(name, forcedHeight, compact) {
   const card = await chartCard(name, { layout: (spec) => columnLayout(spec, forcedHeight), title: postTitle, compact, note: false });
   if (card) return statusBelow(card);
