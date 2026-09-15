@@ -333,7 +333,7 @@ function card(title, subtitle, { collapsed = false } = {}) {
 // the dashboard, so the overrides live on a copy.
 // `compact`: the harness-effect card draws its two panels in the compact
 // geometry that fits a reading column (harness.js); every other card ignores it
-export async function chartCard(name, { collapsed = false, layout = null, title = null, compact = false } = {}) {
+export async function chartCard(name, { collapsed = false, layout = null, title = null, compact = false, note = true } = {}) {
   const boot = window.__AB_BOOT__;
   const url = boot.charts[name];
   if (!url) return null; // missing artifact -> the card removes itself
@@ -392,8 +392,9 @@ export async function chartCard(name, { collapsed = false, layout = null, title 
   body.appendChild(plot);
   // a spec's `note` is the one line that says what the marks are (the
   // agent-context card: bars are means, whiskers ±1 SD); it sits under the
-  // plot, where a legend would
-  if (spec.note) {
+  // plot, where a legend would. A caller whose figure has a caption of its
+  // own (the blog post) passes `note: false`
+  if (spec.note && note) {
     const note = document.createElement('p');
     note.className = 'card-note';
     note.textContent = spec.note;

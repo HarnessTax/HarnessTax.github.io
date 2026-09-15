@@ -37,7 +37,10 @@ const CI_ALPHA = 0.3; // confidence-interval bars: the model colour, well behind
 // a harness's own frontier: the harness colour of the harness-effect card
 // (palette.js), lightened so the model-coloured badges riding on it stay in front
 const SUBSET_ALPHA = 0.6;
-export const ZOOM_HINT = 'wheel or shift-drag zooms · drag pans · double-click resets';
+// the status line's one gesture hint, shared with the cost-scaling card. The
+// other gestures (drag pans, double-click resets) go unsaid so the idle line
+// reads as one short hint; wheeling back out returns to the designed view
+export const ZOOM_HINT = 'wheel or shift-drag zooms';
 // harness tour after the story (the same timing as the cost-scaling card's
 // model tour): the pause before it starts and the time each stop is on show (a
 // harness, its pill's fill counting the time down, or the overview of all
@@ -518,7 +521,7 @@ function syncPills(state) {
   state.pills.status.textContent = active
     ? `${n} of ${total} observations highlighted${subsetFrontier ? ' · frontier drawn within the selection' : ''}${touring}`
     : state.tour ? `all ${total} observations, the frontier systems as filled badges${touring}`
-      : `${total} observations · pick a model or harness to highlight it · ${ZOOM_HINT}`;
+      : `pick a model or harness to highlight it · ${ZOOM_HINT}`;
 }
 
 async function renderInteractive(state) {

@@ -116,8 +116,11 @@ function statusBelow(card) {
 // (`?wide`, `.dash-wide`) keeps the dashboard's geometry at the wide width.
 const inColumn = (fig) => !fig.classList.contains('dash-wide');
 
+// The post's own caption says what a figure's marks are, so a card's note
+// under the plot (the first-call context card's "Bars: mean per harness…")
+// is not mounted here.
 async function liveCard(name, forcedHeight, compact) {
-  const card = await chartCard(name, { layout: (spec) => columnLayout(spec, forcedHeight), title: postTitle, compact });
+  const card = await chartCard(name, { layout: (spec) => columnLayout(spec, forcedHeight), title: postTitle, compact, note: false });
   if (card) return statusBelow(card);
   const p = note(`dashboard chart “${name}” is not in this build`);
   p.classList.add('dash-missing');
