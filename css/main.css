@@ -159,6 +159,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 8px 28px 40px; }
 .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .card-head h3 { margin: 0; font-size: 13.5px; font-weight: 650; }
 .card-sub { margin: 2px 0 8px; color: var(--muted); font-size: 12px; }
+.card-note { margin: 4px 0 2px; color: var(--muted); font-size: 11.5px; line-height: 1.45; } /* one line under the plot saying what the marks are (spec.note) */
 .card-actions button {
   border: none;
   background: none;
@@ -805,7 +806,7 @@ details.info { margin: 6px 0 6px 22px; }
 /* ------------------------------------------- cost-scaling card (Part I) */
 .accrual-body { width: 100%; }
 /* the resource switch closes the harness row, after the status line */
-.acc-metric { align-self: center; margin-left: 10px; flex-shrink: 0; }
+.acc-metric { align-self: center; margin-left: auto; flex-shrink: 0; } /* at the row's right edge, under Replay */
 .acc-metric button:disabled { opacity: .38; cursor: not-allowed; }
 .acc-metric button:disabled:hover { color: var(--muted); }
 .accrual-body .plot .scatterlayer .trace { transition: opacity .3s ease; }
@@ -1019,13 +1020,20 @@ html[data-view="blog"] .masthead { justify-content: flex-end; padding-bottom: 0;
 .prose p.footnote.ref-hit { background: var(--wash); box-shadow: -10px 0 0 var(--wash), 10px 0 0 var(--wash), inset 3px 0 0 var(--accent); }
 /* unresolved inline notes, `\tbd{...}` / `\melissa{...}` / `[placeholder]`, in red */
 .prose .todo { color: var(--critical); }
-/* a folded section (its heading was marked "collapsable, closed by default") */
+/* a folded section (its heading was marked "collapsable, closed by default"):
+   the heading is the toggle, with a disclosure triangle right after its text
+   (heading-sized, pointing right when closed and down when open) and a hover
+   state, so it reads as something to click; the heading stays flush left
+   with the other h2s */
 .prose details.fold { margin: calc(var(--blog-root) * 3.2) auto calc(var(--blog-root) * 0.9); }
-.prose details.fold > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 0.5em; color: var(--ink); font-size: inherit; } /* the trace viewer's `details > summary` rule mutes and shrinks summaries */
+.prose details.fold > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 0.55em; width: max-content; max-width: 100%; color: var(--ink); font-size: inherit; user-select: none; } /* the trace viewer's `details > summary` rule mutes and shrinks summaries */
 .prose details.fold > summary::-webkit-details-marker { display: none; }
-.prose details.fold > summary::after { content: "▸"; font-family: var(--blog-sans); color: var(--muted); font-size: calc(var(--blog-root) * 1.1); flex: none; margin-left: auto; } /* arrow at the column's right edge: the heading stays flush left with the other h2s */
-.prose details.fold[open] > summary::after { content: "▾"; }
-.prose details.fold > summary h2 { margin: 0; }
+.prose details.fold > summary::after { content: ""; flex: none; width: 0; height: 0; border-top: 0.42em solid transparent; border-bottom: 0.42em solid transparent; border-left: 0.6em solid var(--muted); font-size: calc(var(--blog-root) * 1.35); transform: translateY(0.04em); transition: transform 140ms ease, border-color 140ms ease; }
+.prose details.fold[open] > summary::after { transform: translateY(0.04em) rotate(90deg); }
+.prose details.fold > summary:hover { color: var(--accent); }
+.prose details.fold > summary:hover::after { border-left-color: var(--accent); }
+.prose details.fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 3px; }
+.prose details.fold > summary h2 { margin: 0; color: inherit; }
 .prose details.fold[open] > summary { margin-bottom: calc(var(--blog-root) * 0.9); }
 /* live dashboard figures (`![caption](dashboard:<chart>)`): the chart's own card
    with its pills, replay, notes and table; the collapse toggle is inert here

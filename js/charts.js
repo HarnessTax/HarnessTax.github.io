@@ -388,6 +388,15 @@ export async function chartCard(name, { collapsed = false, layout = null, title 
   }
   plot._ab = { spec, ctl };
   body.appendChild(plot);
+  // a spec's `note` is the one line that says what the marks are (the
+  // agent-context card: bars are means, whiskers ±1 SD); it sits under the
+  // plot, where a legend would
+  if (spec.note) {
+    const note = document.createElement('p');
+    note.className = 'card-note';
+    note.textContent = spec.note;
+    body.appendChild(note);
+  }
 
   io.observe(plot);
   return el;

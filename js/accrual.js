@@ -1,6 +1,6 @@
 // Cost-scaling card: smoothed resource-ranked accrual curves.
 //
-// One plotly figure with a toolbar (model/harness pills, Cost/Tokens/Steps,
+// One plotly figure with a toolbar (model/harness pills, Cost/Turns/Tokens,
 // Replay) and, under the figure, a stats strip that appears for a selection.
 // When the card first scrolls into view an SVG
 // overlay plays the scaling story over the empty axes: every curve grows at
@@ -65,10 +65,32 @@ const FORMAT = {
     subset: (k, n) => `${k} of ${n} rollouts with the fewest tokens`, peak: 'most tokens in one rollout so far',
   },
   steps: {
-    hover: (ref) => `%{${ref}:.1f} steps`, text: (v) => `${v.toFixed(1)} steps`,
-    subset: (k, n) => `${k} of ${n} rollouts with the fewest steps`, peak: 'most steps in one rollout so far',
+    hover: (ref) => `%{${ref}:.1f} turns`, text: (v) => `${v.toFixed(1)} turns`,
+    subset: (k, n) => `${k} of ${n} rollouts with the fewest turns`, peak: 'most turns in one rollout so far',
   },
 };
+// The resource switch reads Cost · Turns · Tokens: the spec's `steps` metric
+// (charts.py, provenance-bound, still says "steps") is worded "turns" here,
+// the post's word for a harness-defined agent turn, on its button, its
+// tooltip and its axis title; the order is the card's own.
+const METRIC_ORDER = ['cost', 'steps', 'gross_tokens'];
+const METRIC_WORDING = {
+  steps: { label: 'Turns', resource: 'logged harness-defined turns', noun: 'turns' },
+};
+const TURNS_RE = /\bsteps\b/g;
+function metricWording(info) {
+  return { ...info, ...(METRIC_WORDING[info.key] || {}) };
+}
+function orderedMetrics(metrics) {
+  const rank = (m) => { const i = METRIC_ORDER.indexOf(m.key); return i < 0 ? METRIC_ORDER.length : i; };
+  return [...metrics].sort((a, b) => rank(a) - rank(b));
+}
+function wordAxis(xaxis) {
+  if (!xaxis || !xaxis.title) return xaxis;
+  const title = typeof xaxis.title === 'string' ? xaxis.title.replace(TURNS_RE, 'turns')
+    : { ...xaxis.title, text: String(xaxis.title.text || '').replace(TURNS_RE, 'turns') };
+  return { ...xaxis, title };
+}
 // success-rate differences are shown as percentage points written with %
 const pct = (v, signed = false) => `${signed && v > 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -138,7 +160,7 @@ function leadersFor(state) {
 // height and margins (automargin off), the metric's fixed x range, y 0–1.
 function geometry(state) {
   const layout = state.ctx.resolve(state.spec.plotly.layout);
-  const xaxis = state.ctx.resolve(metricInfo(state).xaxis);
+  const xaxis = wordAxis(state.ctx.resolve(metricInfo(state).xaxis));
   const xr = xaxis.range;
   const yr = layout.yaxis.range;
   const m = { ...layout.margin, t: Math.max(layout.margin.t, TOP_ROOM) };
@@ -710,7 +732,7 @@ export function mountAccrual(body, spec, ctx) {
   };
 
   // toolbar, laid out like the Pareto card's: the model row ends with Replay,
-  // the harness row with the status line and the resource switch
+  // the harness row with the status line and, under Replay, the resource switch
   const toolbar = h('div', 'fr-toolbar acc-toolbar', body);
   const pills = createPills({
     models: acc.models, harnesses: acc.harnesses, sel: state.sel,
@@ -735,7 +757,7 @@ export function mountAccrual(body, spec, ctx) {
   metricSeg.setAttribute('role', 'group');
   metricSeg.setAttribute('aria-label', 'ranking resource');
   const metricButtons = {};
-  for (const info of acc.metrics) {
+  for (const info of orderedMetrics(acc.metrics).map(metricWording)) {
     const b = h('button', null, metricSeg);
     b.type = 'button';
     b.textContent = info.label;

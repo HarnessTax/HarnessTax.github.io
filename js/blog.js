@@ -47,20 +47,22 @@ const COLUMN_LAYOUT = {
   frontier: { height: 400 },
   accrual: { height: 520, margin: { t: 96 } },
 };
-// The agent-context card draws its four panels in one row on the dashboard;
-// in the column that leaves each panel too narrow for its value labels, so
-// the same panels are re-seated two by two: the paper-relative axis domains
-// and panel titles move, nothing else changes.
-function contextColumnLayout(spec) {
+// The agent-context card's four column panels share one row in the reading
+// column as on the dashboard (its values are written on the columns, so a
+// quarter of the column is wide enough). On a phone a quarter is not: there
+// the same panels are re-seated two by two, the paper-relative axis domains
+// and panel titles moving and nothing else changing.
+const NARROW = '(max-width: 700px)';
+function contextNarrowLayout(spec) {
   const base = spec.plotly && spec.plotly.layout;
   if (!base) return null;
   const cols = 2;
-  const gapX = 0.09;
-  const gapY = 0.2;
+  const gapX = 0.1;
+  const gapY = 0.24;
   const w = (1 - gapX * (cols - 1)) / cols;
   const rows = Math.ceil(spec.context.panels / cols);
   const h = (1 - gapY * (rows - 1)) / rows;
-  const patch = { height: 200 * rows + 80, annotations: [] };
+  const patch = { height: 210 * rows + 60, annotations: [] };
   for (let i = 0; i < spec.context.panels; i++) {
     const key = i === 0 ? '' : String(i + 1);
     const col = i % cols;
@@ -68,9 +70,9 @@ function contextColumnLayout(spec) {
     const x0 = col * (w + gapX);
     const y1 = 1 - row * (h + gapY);
     patch[`xaxis${key}`] = { ...base[`xaxis${key}`], domain: [x0, x0 + w] };
-    patch[`yaxis${key}`] = { ...base[`yaxis${key}`], domain: [y1 - h, y1], showticklabels: col === 0 };
+    patch[`yaxis${key}`] = { ...base[`yaxis${key}`], domain: [y1 - h, y1] };
     const title = (base.annotations || [])[i];
-    if (title) patch.annotations.push({ ...title, x: x0, y: y1 });
+    if (title) patch.annotations.push({ ...title, x: x0 + w / 2, y: y1 });
   }
   return patch;
 }
@@ -78,7 +80,7 @@ function contextColumnLayout(spec) {
 function columnLayout(spec, forcedHeight) {
   const patch = spec.frontier ? COLUMN_LAYOUT.frontier
     : spec.accrual ? COLUMN_LAYOUT.accrual
-    : spec.context ? contextColumnLayout(spec)
+    : spec.context && window.matchMedia(NARROW).matches ? contextNarrowLayout(spec)
     : null;
   if (!patch && !forcedHeight) return null;
   return forcedHeight ? { ...(patch || {}), height: forcedHeight } : patch;
