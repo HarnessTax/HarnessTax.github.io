@@ -331,7 +331,9 @@ function card(title, subtitle, { collapsed = false } = {}) {
 // height to it. `title` (a string, or a function of the spec's title) heads
 // this card instead of the spec's own title. The cached spec is shared with
 // the dashboard, so the overrides live on a copy.
-export async function chartCard(name, { collapsed = false, layout = null, title = null } = {}) {
+// `compact`: the harness-effect card draws its two panels in the compact
+// geometry that fits a reading column (harness.js); every other card ignores it
+export async function chartCard(name, { collapsed = false, layout = null, title = null, compact = false } = {}) {
   const boot = window.__AB_BOOT__;
   const url = boot.charts[name];
   if (!url) return null; // missing artifact -> the card removes itself
@@ -371,7 +373,7 @@ export async function chartCard(name, { collapsed = false, layout = null, title 
   } else if (spec.harness) {
     plot = document.createElement('div');
     plot.className = 'harness-body';
-    ctl = mountHarness(plot, spec, ctx);
+    ctl = mountHarness(plot, spec, { ...ctx, compact });
     if (ctl.seg) actions.appendChild(ctl.seg);
   } else if (spec.race) {
     plot = document.createElement('div');

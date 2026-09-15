@@ -75,19 +75,26 @@ function axisFor(max, step) {
            fmt: (t) => (t === 0 ? '$0' : '$' + t.toFixed(dec)),
            isOff: (c) => c.x > max + 1e-9 };
 }
-// the default window keeps the published steps ($0.20 labels, $0.10 gridlines); only a fitted axis picks its own step
-const defaultAxis = (win) => axisFor(win.max, 0.2);
+// the default window keeps the published steps ($0.20 labels, $0.10 gridlines); only a fitted axis picks its own step.
+// The compact pair labels every $0.40 (gridlines at $0.20): on its 244 px plot the $0.20 labels would sit 30 px apart.
+const defaultAxis = (win, compact) => axisFor(win.max, compact ? 0.4 : 0.2);
 
 // ---------- two aligned bar charts ----------
 // Shared vertical geometry (top, grpH, hdr, barH, gap) so row i of the left chart sits on exactly the same y as row i of the right chart.
 // Both panels carry the same 98 px label column left of their axis (model name heads each group; harness name per row),
-// then a linear axis: $ from 0 on the left, 0–100 % on the right.
+// then a linear axis: $ from 0 on the left, 0–100 % on the right. The compact pair (ctx.compact, the blog's 736 px
+// reading column: 702 px inside the card, 382 + 320 with no gap) keeps every font size and the row geometry and gives
+// up width only: one label column, 82 px on the cost panel, whose model names and harness names serve both panels (the
+// rate panel's rows sit on the cost panel's and carry no names of their own), plots of 244 and 262 px, and the group
+// separators run edge to edge so they read as one line across the pair. Because the one label column stands for both
+// quantities, no name is written green there: the ring alone marks the best cell on each panel. On a window under
+// 600 px the pair stacks (main.css) and the rate panel is redrawn with the cost panel's labelled geometry.
 // Row constants, identical in every sister card so the cards stack cleanly: row r of group g sits at y = top + g·grpH + hdr + r·(barH + gap).
 const ROWS = { top: 30, grpH: 74, hdr: 20, barH: 13, gap: 4 };
 // Best-in-group mark: within one model, the harness that is best on that panel's own quantity — the cheapest cell on the
 // cost panel, the highest success rate on the rate panel — has its harness name in the label column written in green
-// (BEST_GREEN) at weight 600 AND its bar wrapped by a 2 px green ring; the other two names stay the muted ink and their
-// bars are unmarked. "Best" is read off the data, not off the bar, so it stays correct however a panel encodes its
+// (BEST_GREEN) at weight 600 AND its bar wrapped by a 2.5 px ring in the brighter RING_GREEN (--hb-ring); the other
+// two names stay the muted ink and their bars are unmarked. "Best" is read off the data, not off the bar, so it stays correct however a panel encodes its
 // quantity, and exact ties all carry it.
 // The ring is its own rect that WRAPS the bar from outside: the bar's rect expanded by BEST.pad on every side
 // (x − 2, y − 2, width + 4, height + 4, rx 3), fill none, stroke-width 2, pointer-events none. A 2 px stroke centred on
@@ -97,21 +104,36 @@ const ROWS = { top: 30, grpH: 74, hdr: 20, barH: 13, gap: 4 };
 // ink — still reads inside the ring's gap. Two adjacent best rows (a tie) have rings that touch; that is accepted. A bar
 // clamped to a sliver (a fitted axis can squeeze the cheapest cell below a pixel) is simply wrapped like any other: the
 // ring marks the row, the value sits clear of it. The ring is in the node registry, so it follows the axis refit animation.
-const BEST = { sw: 2, pad: 2, rx: 3 };
+const BEST = { sw: 2.5, pad: 2, rx: 3 };
+// `labels`: the harness name per row; `names`: the model name heading each group (default: as `labels`);
+// `bestLabels`: the best harness's name in green (default: yes); `flush`: separators and washes edge to edge
 const COST = { host: 'cost', mode: 'cost', W: 556, x0: 98, right: 62, labels: true, lblX: 8, nameX: 8 };
 const RATE = { host: 'rate', mode: 'rate', W: 578, x0: 98, right: 62, labels: true, lblX: 8, nameX: 8 };
+const COMPACT = {
+  cost: { ...COST, W: 382, x0: 82, right: 56, bestLabels: false, flush: true },
+  rate: { ...RATE, W: 320, x0: 12, right: 46, labels: false, names: false, flush: true },
+};
+// the compact pair stacked (a window under 600 px): the rate panel takes the cost panel's labelled geometry
+const STACKED = { cost: COMPACT.cost, rate: { ...COMPACT.cost, host: 'rate', mode: 'rate' } };
+const NARROW = '(max-width: 600px)';
 const FIT_MS = 300;
 const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 const easeInOut = (u) => (u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
 
 export function mountHarness(body, spec, ctx) {
   const B = spec.harness;
-  // the neutral colours and the best-green follow the active theme; read at every draw
-  let INK = '#0b0b0b', INK2 = '#52514e', GRID = '#e1e0d9', AXIS = '#c3c2b7', SURFACE = '#fcfcfb', BEST_GREEN = '#1e7f3c';
+  const compact = !!ctx.compact;
+  const narrow = compact && window.matchMedia ? window.matchMedia(NARROW) : null;
+  let PANELS = { cost: COST, rate: RATE };
+  const pickPanels = () => { PANELS = !compact ? { cost: COST, rate: RATE } : narrow && narrow.matches ? STACKED : COMPACT; };
+  // the neutral colours and the greens follow the active theme; read at every draw
+  let INK = '#0b0b0b', INK2 = '#52514e', GRID = '#e1e0d9', AXIS = '#c3c2b7', SURFACE = '#fcfcfb', BEST_GREEN = '#1e7f3c', RING_GREEN = '#16b34c';
   function readTheme() {
     INK = ctx.resolve('@ink'); INK2 = ctx.resolve('@ink2'); GRID = ctx.resolve('@grid');
     AXIS = ctx.resolve('@axis'); SURFACE = ctx.resolve('@surface');
-    BEST_GREEN = getComputedStyle(body).getPropertyValue('--hb-best').trim() || BEST_GREEN;
+    const css = getComputedStyle(body);
+    BEST_GREEN = css.getPropertyValue('--hb-best').trim() || BEST_GREEN;
+    RING_GREEN = css.getPropertyValue('--hb-ring').trim() || RING_GREEN;
   }
 
   // ---------- card body: the mockup's DOM, one benchmark ----------
@@ -256,15 +278,18 @@ export function mountHarness(body, spec, ctx) {
     V.models.forEach((m, i) => {
       const gy = top + i * grpH;
       const g = s('g', { class: 'grp', 'data-model': m.key }, plot);
-      s('rect', { class: 'grpbg', x: 0, y: gy, width: W, height: grpH, rx: 4 }, g);
+      // flush (the abutting compact pair): the wash and the separator overrun the panel edge by a pixel on each side
+      // (the SVG has overflow visible there), so the seam between the two panels never shows as a hairline
+      const ox = C.flush ? 1 : 0;
+      s('rect', { class: 'grpbg', x: -ox, y: gy, width: W + 2 * ox, height: grpH, rx: C.flush ? 0 : 4 }, g);
       // this group's gridlines and zero axis: above the wash, below the separator, labels and bars
       const band = bands[i];
       for (let t = 0; t < maxTicks; t++) grid[t][i] = s('line', { x1: 0, x2: 0, y1: band.y1, y2: band.y2, stroke: GRID, 'stroke-width': 1 }, g);
       s('line', { x1: x0, x2: x0, y1: band.y1, y2: band.y2, stroke: AXIS, 'stroke-width': 1 }, g);
-      if (i > 0) s('line', { x1: 4, x2: W - 4, y1: gy, y2: gy, stroke: GRID }, g);
+      if (i > 0) s('line', { x1: C.flush ? -ox : 4, x2: C.flush ? W + ox : W - 4, y1: gy, y2: gy, stroke: GRID }, g); // flush: one line across the pair
       const cy0 = gy + hdr; // the first bar starts where the header band ends
       const best = bestHarnesses(m, mode); // cheapest on the cost panel, highest success rate on the rate panel; ties included
-      if (C.labels) {
+      if (C.names ?? C.labels) {
         const name = s('text', { class: 'mname', x: C.lblX, y: gy + 14, 'font-size': 12, 'font-weight': 600, fill: INK,
                                  role: 'button', tabindex: 0, 'aria-label': `${m.label}: highlight this model in both charts` }, g, m.label);
         name.addEventListener('click', () => togglePin(m.key, null));
@@ -280,8 +305,9 @@ export function mountHarness(body, spec, ctx) {
         const fill = HARNESS_COLOR[h]; // same colour for this harness in every model group
         const isBest = best.includes(h);
         if (C.labels) { // label column: harness name left of the axis (nothing is drawn inside the bar); the panel's best harness in green
-          s('text', { class: isBest ? 'hlabel best' : 'hlabel', x: C.nameX, y: ymid + 3.6, 'font-size': 10.5, 'font-weight': isBest ? 600 : 500,
-                      fill: isBest ? BEST_GREEN : INK2, 'data-best': isBest ? 'true' : null }, gb, c.label);
+          const green = isBest && C.bestLabels !== false; // never when the column serves both panels
+          s('text', { class: green ? 'hlabel best' : 'hlabel', x: C.nameX, y: ymid + 3.6, 'font-size': 10.5, 'font-weight': green ? 600 : 500,
+                      fill: green ? BEST_GREEN : INK2, 'data-best': green ? 'true' : null }, gb, c.label);
         }
         // width (bar) and x (value) are the only axis-dependent attributes; they are listed here at creation so the
         // attribute order of a node never depends on when it was last written, and filled in by layoutChart.
@@ -305,7 +331,7 @@ export function mountHarness(body, spec, ctx) {
         const bestRect = isBest
           ? s('rect', { class: 'bestrect', 'data-model': m.key, 'data-harness': h,
                         x: x0 - BEST.pad, y: cy - BEST.pad, width: 1 + 2 * BEST.pad, height: barH + 2 * BEST.pad, rx: BEST.rx,
-                        fill: 'none', stroke: BEST_GREEN, 'stroke-width': BEST.sw, 'pointer-events': 'none' }, rings)
+                        fill: 'none', stroke: RING_GREEN, 'stroke-width': BEST.sw, 'pointer-events': 'none' }, rings)
           : null;
         const rec = { m, c, h, gb, rect, val, hit, bestRect, whisker: { line: wLine, capLo: wCapLo, capHi: wCapHi }, cy, ymid, brk: null, tipX: x0 };
         hit.addEventListener('mouseenter', (e) => { setHover(m.key, h); showTip(tipHTML(m, c), e); });
@@ -461,7 +487,7 @@ export function mountHarness(body, spec, ctx) {
   }
   // A frame writes geometry only: no node is created, moved or removed, so a click that straddles the transition keeps
   // its target, the focused row keeps focus, and Esc, Enter or a second click land exactly as they do at rest.
-  function paintAxis(axis, fitted) { CAXIS.axis = axis; CAXIS.fitted = fitted; layoutChart(COST); }
+  function paintAxis(axis, fitted) { CAXIS.axis = axis; CAXIS.fitted = fitted; layoutChart(PANELS.cost); }
   function syncAxis(animate) {
     if (ANIM.raf) { cancelAnimationFrame(ANIM.raf); ANIM.raf = 0; } // a new selection takes over from wherever the last one got to
     const t = axisTarget(), from = CAXIS.axis.max;
@@ -521,11 +547,11 @@ export function mountHarness(body, spec, ctx) {
     s('rect', { x: 1, y: 2.5, width: 14, height: 7, rx: 1.5, fill, stroke: fill, 'stroke-width': 0.6, 'stroke-opacity': 0.55 }, svg);
     return svg;
   }
-  // legend key for the best ring: a hollow green ring around a small neutral bar, the same 2 px stroke as on the chart
+  // legend key for the best ring: a hollow ring around a small neutral bar, the chart's ring green
   function ringSwatch() {
     const svg = s('svg', { viewBox: '0 0 16 12', 'aria-hidden': 'true' });
     s('rect', { x: 4, y: 3.5, width: 8, height: 5, rx: 1, fill: GRID }, svg);
-    s('rect', { x: 2, y: 1.5, width: 12, height: 9, rx: 2, fill: 'none', stroke: BEST_GREEN, 'stroke-width': 1.6 }, svg);
+    s('rect', { x: 2, y: 1.5, width: 12, height: 9, rx: 2, fill: 'none', stroke: RING_GREEN, 'stroke-width': 1.8 }, svg);
     return svg;
   }
   // legend: the three harness swatches (row order) and one ring item that covers both best-in-group marks
@@ -534,7 +560,9 @@ export function mountHarness(body, spec, ctx) {
     L.innerHTML = '';
     const item = (node, text) => { const d = el('span', { class: 'item' }, L); if (node) d.appendChild(node); el('span', {}, d, text); };
     for (const h of HARNESSES) item(swatch(HARNESS_COLOR[h]), HARNESS_LABEL[h]); // colour = harness, the same in every model group
-    item(ringSwatch(), 'green ring / green label = model\'s best (cheapest; highest rate)');
+    item(ringSwatch(), PANELS.cost.bestLabels === false
+      ? 'green ring = model\'s best (cheapest; highest rate)' // the one label column serves both panels, so no name is green
+      : 'green ring / green label = model\'s best (cheapest; highest rate)');
   }
   // the muted line under the legend: what the bars and the whiskers encode (the serving-route note lives in the notes pane and the table)
   function renderFootnote() {
@@ -549,18 +577,21 @@ export function mountHarness(body, spec, ctx) {
   // ---------- controls ----------
   function render() {
     readTheme();
+    pickPanels();
     VIEW = buildView();
     state.hover = null;
     if (state.pinned && !VIEW.models.find((m) => m.key === state.pinned.model)) state.pinned = null;
-    VIEW.defAxis = defaultAxis(VIEW.costWin);
+    VIEW.defAxis = defaultAxis(VIEW.costWin, compact);
     if (ANIM.raf) { cancelAnimationFrame(ANIM.raf); ANIM.raf = 0; }
     const t0 = axisTarget(); CAXIS.axis = t0.axis; CAXIS.target = t0.axis; CAXIS.fitted = t0.fitted;
     // a view change (the first paint, a theme change) rebuilds both structures; every later axis move is layout only
-    buildChart(COST); buildChart(RATE); layoutChart(COST); layoutChart(RATE); applyHighlight();
+    buildChart(PANELS.cost); buildChart(PANELS.rate); layoutChart(PANELS.cost); layoutChart(PANELS.rate); applyHighlight();
     renderLegend(); renderFootnote();
     hideTip();
   }
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') clearPin(); });
+  // the compact pair stacks and unstacks with the window (main.css): the rate panel is redrawn with or without labels
+  if (narrow) narrow.addEventListener('change', () => { if (shown) render(); });
   // clicking the card background (not a bar row, a model name or a control) clears the selection
   card.addEventListener('click', (e) => {
     if (e.target.closest && e.target.closest('.hit, .mname, button, a')) return;

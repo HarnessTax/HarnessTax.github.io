@@ -23,6 +23,7 @@
      opacity behind a selected model's rows; the hover wash is the same tint at 45 %, --hb-wash2-flat is that
      composited on the surface, for the value halo) */
   --hb-best: #1e7f3c;
+  --hb-ring: #16b34c; /* the best-cell ring: brighter than the label green, so a 2.5 px outline reads at a glance */
   --hb-wash: #fff3b0;
   --hb-wash2: rgba(255, 243, 176, 0.45);
   --hb-wash2-flat: #fdf8d9;
@@ -49,6 +50,7 @@
   --code-bg: rgba(127, 127, 127, 0.14);
   /* the green lifts for contrast on the dark surface; the wash is the same yellow, deep enough for ink to stay legible */
   --hb-best: #3fb15f;
+  --hb-ring: #3ddc6e;
   --hb-wash: #3f3a1c;
   --hb-wash2: rgba(63, 58, 28, 0.45);
   --hb-wash2-flat: #2b2a1a;
@@ -859,7 +861,7 @@ details.info { margin: 6px 0 6px 22px; }
 .harness-body .grp.focus .mname { fill: var(--ink); font-weight: 700; }
 .harness-body .grp.focus .hlabel:not(.best) { fill: var(--ink); }
 .harness-body .hlabel.best { fill: var(--hb-best); font-weight: 600; } /* the model's best harness on this panel: written in green, and its bar ringed */
-.harness-body .bestrect { pointer-events: none; stroke: var(--hb-best); } /* the best-in-group ring (wrapping the bar from outside) is decoration only: the row's hit area stays the target */
+.harness-body .bestrect { pointer-events: none; stroke: var(--hb-ring, var(--hb-best)); } /* the best-in-group ring (wrapping the bar from outside) is decoration only: the row's hit area stays the target */
 .harness-body .hit { fill: transparent; cursor: pointer; outline: none; }
 .harness-body .hit:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .harness-body .mname { cursor: pointer; outline: none; }
@@ -1061,20 +1063,29 @@ html[data-view="blog"] .masthead { justify-content: flex-end; padding-bottom: 0;
 .dash-bench button[aria-selected="true"] { color: var(--surface); background: var(--ink); border-color: var(--ink); }
 .dash-bench button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .dash-switch .dash-pane[hidden] { display: none; }
-/* the harness-effect card's two fixed-width panels (556 + 578px) keep their
-   side-by-side layout in a wide figure, sharing its width in their native
-   proportion (the SVGs scale through their viewBox); in the reading column,
-   or on a window too narrow for the pair, they stack and scale to the width */
+/* the harness-effect card's two panels stay side by side, sharing the
+   figure's width in their native proportion (the SVGs scale through their
+   viewBox): in the reading column the compact pair harness.js draws for it
+   (382 + 320 = the 702px inside the card, so the type is at size; no gap, the
+   panels abut so the group separators run across as one line), in a wide
+   figure the dashboard's 556 + 578; on a window too narrow for either pair
+   they stack and scale to the width */
 .dash-figure .hb-body { overflow: visible; }
 .dash-wide .hb-left { width: auto; flex: 556 1 0; min-width: 0; }
 .dash-wide .hb-right { width: auto; flex: 578 1 0; min-width: 0; }
-.dash-figure:not(.dash-wide) .hb-body { flex-direction: column; align-items: stretch; gap: 24px; }
-.dash-figure:not(.dash-wide) .hb-left, .dash-figure:not(.dash-wide) .hb-right { width: 100%; max-width: 100%; flex: none; }
+.dash-figure:not(.dash-wide) .hb-body { gap: 0; }
+.dash-figure:not(.dash-wide) .hb-left { width: auto; flex: 382 1 0; min-width: 0; }
+.dash-figure:not(.dash-wide) .hb-right { width: auto; flex: 320 1 0; min-width: 0; }
+.dash-figure:not(.dash-wide) .hb-left .hb-colhead { padding-right: 28px; } /* the cost hint ends short of the rate panel's heading */
 @media (max-width: 1000px) {
   .dash-wide .hb-body { flex-direction: column; align-items: stretch; gap: 24px; }
   .dash-wide .hb-left, .dash-wide .hb-right { width: 100%; max-width: 100%; flex: none; }
 }
-.dash-figure .harness-body svg[data-chart] { width: 100%; height: auto; }
+@media (max-width: 600px) {
+  .dash-figure:not(.dash-wide) .hb-body { flex-direction: column; align-items: stretch; gap: 24px; }
+  .dash-figure:not(.dash-wide) .hb-left, .dash-figure:not(.dash-wide) .hb-right { width: 100%; max-width: 100%; flex: none; }
+}
+.dash-figure .harness-body svg[data-chart] { width: 100%; height: auto; overflow: visible; } /* the compact pair's washes and separators overrun the seam by a pixel */
 .dash-figure .hb-legend { flex-wrap: wrap; }
 .dash-figure .hb-fn { white-space: normal; overflow: visible; text-overflow: clip; }
 @media (max-width: 700px) {

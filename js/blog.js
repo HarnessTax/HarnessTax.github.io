@@ -111,8 +111,13 @@ function statusBelow(card) {
   return card;
 }
 
-async function liveCard(name, forcedHeight) {
-  const card = await chartCard(name, { layout: (spec) => columnLayout(spec, forcedHeight), title: postTitle });
+// A figure in the reading column is drawn compact (the harness-effect card's
+// two panels fit the column side by side, see harness.js); one marked wide
+// (`?wide`, `.dash-wide`) keeps the dashboard's geometry at the wide width.
+const inColumn = (fig) => !fig.classList.contains('dash-wide');
+
+async function liveCard(name, forcedHeight, compact) {
+  const card = await chartCard(name, { layout: (spec) => columnLayout(spec, forcedHeight), title: postTitle, compact });
   if (card) return statusBelow(card);
   const p = note(`dashboard chart “${name}” is not in this build`);
   p.classList.add('dash-missing');
@@ -120,7 +125,7 @@ async function liveCard(name, forcedHeight) {
 }
 
 async function mountFigure(fig) {
-  fig.replaceChildren(await liveCard(fig.dataset.chart, Number(fig.dataset.height) || null));
+  fig.replaceChildren(await liveCard(fig.dataset.chart, Number(fig.dataset.height) || null, inColumn(fig)));
 }
 
 // While a pane swaps in for the first time, the figure keeps the outgoing
@@ -197,7 +202,7 @@ async function mountSwitch(fig) {
   });
   bar.append(...buttons);
   fig.prepend(bar);
-  const cards = await Promise.all(panes.map((pane) => liveCard(pane.dataset.chart, Number(pane.dataset.height) || null)));
+  const cards = await Promise.all(panes.map((pane) => liveCard(pane.dataset.chart, Number(pane.dataset.height) || null, inColumn(fig))));
   panes.forEach((pane, i) => pane.replaceChildren(cards[i]));
   show(0);
 }
