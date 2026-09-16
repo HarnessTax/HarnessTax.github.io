@@ -197,6 +197,38 @@ function geometry(state, width) {
 
 // `axes` (plot units, log10 on the log axis) maps the points for a zoomed
 // view; without it the designed view's scales apply
+// Every observation on a card is the same sample (unique tasks × repetitions:
+// "30 unique tasks over 3 repetitions"), so the card states it once, under the
+// plot, and a hover keeps only what sets its observation apart: the caveats
+// charts.py appends to the statement after " · " (a turn-cap count, say). A
+// card whose observations differ in sample states nothing under the plot and
+// every hover keeps its own full statement.
+function sampleParts(text) {
+  const [head, ...rest] = (text || '').split(' · ');
+  return { head, rest: rest.join(' · ') };
+}
+function sharedSample(points) {
+  const heads = new Set(points.map((p) => sampleParts(p.sample).head));
+  return heads.size === 1 ? [...heads][0] || null : null;
+}
+// what a hover says of an observation's sample: its caveats alone when the
+// statement is the card's shared one, else the text as written
+function hoverSample(shared, text) {
+  const parts = sampleParts(text);
+  return shared && parts.head === shared ? parts.rest : text || '';
+}
+// the plotly hover's sample line (charts.py's frontier traces: customdata[4])
+const SAMPLE_LINE = '<br>%{customdata[4]}';
+// the line under the plot: the shared statement spelled out for the reader
+// ("30 unique tasks over 3 repetitions" becomes "30 unique randomly sampled
+// tasks over 3 repetitions for every model × harness point"); a statement of
+// another shape is quoted as written
+function sampleLine(shared) {
+  const m = /^(\d+) unique tasks? over (\d+) repetitions?$/.exec(shared);
+  if (!m) return `every observation: ${shared}`;
+  return `${m[1]} unique randomly sampled tasks over ${m[2]} repetition${m[2] === '1' ? '' : 's'} for every model × harness point`;
+}
+
 function pixelPoints(state, geo, axes = null) {
   const xs = axes
     ? (v) => MARGIN.l + (((geo.logX ? Math.log10(v) : v) - axes.x0) / (axes.x1 - axes.x0)) * geo.iw
@@ -205,7 +237,7 @@ function pixelPoints(state, geo, axes = null) {
     ? (v) => MARGIN.t + geo.ih - ((v - axes.y0) / (axes.y1 - axes.y0)) * geo.ih
     : geo.ys;
   const points = state.spec.frontier.points.map((p) => ({
-    ...p, px: xs(p.x), py: ys(p.y), hex: state.ctx.resolve(p.color),
+    ...p, px: xs(p.x), py: ys(p.y), hex: state.ctx.resolve(p.color), hover: hoverSample(state.shared, p.sample),
   }));
   const byId = Object.fromEntries(points.map((p) => [p.id, p]));
   const frontier = state.spec.frontier.path.map((id) => byId[id]).filter(Boolean);
@@ -480,7 +512,7 @@ function showTip(tip, host, p, geo) {
   const line1 = h('div', null, tip);
   line1.textContent = `${fmtPct1(p.y)} resolved · ${fmtUSD(p.x, 0.001)} per rollout`;
   const line2 = h('div', 'fr-tip-muted', tip);
-  line2.textContent = [p.frontier ? 'frontier' : 'dominated', p.sample].filter(Boolean).join(' · ');
+  line2.textContent = [p.frontier ? 'frontier' : 'dominated', p.hover].filter(Boolean).join(' · ');
   tip.style.display = 'block';
   const scale = host.clientWidth / geo.W;
   const tw = tip.offsetWidth;
@@ -509,18 +541,17 @@ function countMatches(state, sel) {
     (!sel.model || p.model === sel.model) && (!sel.harness || p.harness === sel.harness)).length;
 }
 
+// The status line carries no counts ("7 of 21 observations highlighted" said
+// nothing the faded badges do not): a selection's own note and the tour's,
+// else the idle hint
 function syncPills(state) {
   const { sel } = state;
   state.pills.sync();
-  const total = state.spec.frontier.points.length;
   const active = Boolean(sel.model || sel.harness);
-  const n = active ? countMatches(state, sel) : total;
-  const subsetFrontier = active && sel.harness && !sel.model;
-  const touring = state.tour ? ' · touring the harnesses, click anywhere to stop' : '';
-  state.pills.status.textContent = active
-    ? `${n} of ${total} observations highlighted${subsetFrontier ? ' · frontier drawn within the selection' : ''}${touring}`
-    : state.tour ? `all ${total} observations, the frontier systems as filled badges${touring}`
-      : `pick a model or harness to highlight it · ${ZOOM_HINT}`;
+  const notes = [];
+  if (active && sel.harness && !sel.model) notes.push('frontier drawn within the selection');
+  if (state.tour) notes.push('touring the harnesses, click anywhere to stop');
+  state.pills.status.textContent = notes.length ? notes.join(' · ') : `pick a model or harness to highlight it · ${ZOOM_HINT}`;
 }
 
 async function renderInteractive(state) {
@@ -554,6 +585,18 @@ async function renderInteractive(state) {
     // the badge image draws the observation; the marker stays as the hover
     // target (the trace opacity still fades its intervals)
     tr.marker = { ...tr.marker, opacity: 0 };
+    // the hover's sample line keeps only the observation's caveats (the shared
+    // statement is under the plot); an observation left with none loses the line
+    if (state.shared && Array.isArray(tr.customdata) && typeof tr.hovertemplate === 'string') {
+      const rows = tr.customdata.map((row) => {
+        if (!Array.isArray(row) || typeof row[4] !== 'string') return row;
+        const r = row.slice(); r[4] = hoverSample(state.shared, r[4]); return r;
+      });
+      const bare = rows.map((r, i) => r !== tr.customdata[i] && !r[4]);
+      tr.customdata = rows;
+      if (bare.every(Boolean)) tr.hovertemplate = tr.hovertemplate.replace(SAMPLE_LINE, '');
+      else if (bare.some(Boolean)) tr.hovertemplate = bare.map((b) => (b ? tr.hovertemplate.replace(SAMPLE_LINE, '') : tr.hovertemplate));
+    }
   }
   state.imageSpecs = badgeImageSpecs(points, geo, markerSizes(spec), ctx.resolve('@surface'), (p) => {
     if (!active) return 1; // outlined badges already read as dominated
@@ -629,6 +672,7 @@ export function mountFrontier(body, spec, ctx) {
     phase: 'idle', played: false, plotted: false, replaying: false, dirty: false,
     timer: null, plotReady: null, duration: 0,
     tour: null, tourTimer: null, tourVisible: true,
+    shared: sharedSample(spec.frontier.points), // the one sample statement every observation shares, or null
   };
 
   // toolbar: pills (with the status line) and Replay at the end of the model row
@@ -666,6 +710,9 @@ export function mountFrontier(body, spec, ctx) {
   const host = h('div', 'fr-host', stage);
   state.plot = plot;
   state.host = host;
+  // the sample statement, once, under the plot (see sharedSample); the hovers
+  // then carry only an observation's caveats
+  if (state.shared) h('p', 'fr-sample', body).textContent = sampleLine(state.shared);
 
   function ensurePlot() {
     if (!state.plotReady) state.plotReady = renderInteractive(state);

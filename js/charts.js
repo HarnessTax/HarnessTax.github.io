@@ -46,6 +46,19 @@ function loadPlotly() {
   return plotlyPromise;
 }
 
+// a plain plotly card (every chart without a custom view: the agent-context
+// figure, the shelved analyses): the spec's figure, tokens resolved against
+// the active theme, drawn in place; the theme switch calls it again
+async function render(el, spec) {
+  await loadPlotly();
+  const theme = THEMES[MODE];
+  const fig = resolve(spec.plotly, theme);
+  window.Plotly.react(el, fig.data, fig.layout, {
+    displayModeBar: false,
+    responsive: true,
+  });
+}
+
 // Charts that ship alternative encodings of one figure (e.g. an x-axis drawn
 // linear, as −log10 x, or as 1/x) carry them as spec.variants, each a complete
 // plotly figure. A seg in the card header swaps the figure; the table twin
@@ -302,7 +315,7 @@ export async function chartCard(name, { collapsed = false, layout = null, title 
   // agent-context card: bars are means, whiskers ±1 SD); it sits under the
   // plot, where a legend would. A caller whose figure has a caption of its
   // own (the blog post) passes `note: false`, which also drops the whisker
-  // clause from the harness-effect card's footnote (harness.js)
+  // and broken-bar clauses from the harness-effect card's footnote (harness.js)
   if (spec.note && note) {
     const note = document.createElement('p');
     note.className = 'card-note';

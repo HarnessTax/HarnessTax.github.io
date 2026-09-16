@@ -4,7 +4,11 @@
 // rows Pi, Codex, Claude Code; cost per rollout on the left (linear from $0,
 // a cell more than 3× the next-costliest drawn as a broken bar), resolved
 // rate on the right, faint 95 % whiskers on both, the model's best cell on
-// each panel marked green. Hover washes the model's rows and shows a
+// each panel marked green. Each panel's title is an axis title: centred over
+// its plot area, right above the tick labels (the mockup's column headers
+// stood in a row of their own, far above the axis, and carried an axis hint;
+// that hint — a broken bar, a fitted axis — is now a clause of the footnote).
+// Hover washes the model's rows and shows a
 // four-line tooltip; a click pins the model in both charts (and fits the cost
 // axis to it when one of its cells is off-axis); Esc, a second click or the
 // card background clears it. The notes and the table are the mockup's panes.
@@ -90,7 +94,11 @@ const defaultAxis = (win, compact) => axisFor(win.max, compact ? 0.4 : 0.2);
 // quantities, no name is written green there: the ring alone marks the best cell on each panel. On a window under
 // 600 px the pair stacks (main.css) and the rate panel is redrawn with the cost panel's labelled geometry.
 // Row constants, identical in every sister card so the cards stack cleanly: row r of group g sits at y = top + g·grpH + hdr + r·(barH + gap).
-const ROWS = { top: 30, grpH: 74, hdr: 20, barH: 13, gap: 4 };
+// `top` holds the axis title (baseline TITLE.y) and, 8 px above the first row, the tick labels; `hdr` is the group's
+// header band, sized for the model name (NAME.size), which is the one bold text on the card and heads its three rows.
+const ROWS = { top: 38, grpH: 76, hdr: 22, barH: 13, gap: 4 };
+const TITLE = { y: 15, size: 12 };     // the panel's axis title, centred over the plot area, 5 px clear of the tick labels
+const NAME = { y: 16, size: 13.5 };    // the model name, baseline within the header band
 // Best-in-group mark: within one model, the harness that is best on that panel's own quantity — the cheapest cell on the
 // cost panel, the highest success rate on the rate panel — has its harness name in the label column written in green
 // (BEST_GREEN) at weight 600 AND its bar wrapped by a 2.5 px ring in the brighter RING_GREEN (--hb-ring); the other
@@ -139,15 +147,13 @@ export function mountHarness(body, spec, ctx) {
   // ---------- card body: the mockup's DOM, one benchmark ----------
   const bodyEl = el('div', { class: 'hb-body' }, body);
   const left = el('div', { class: 'hb-left' }, bodyEl);
-  const costHead = el('div', { class: 'hb-colhead' }, left);
-  el('span', {}, costHead, 'Cost per rollout ($)');
-  const costHint = el('span', { class: 'hb-hint' }, costHead);
   const hosts = { cost: el('div', {}, left), rate: null };
   const right = el('div', { class: 'hb-right' }, bodyEl);
-  el('span', {}, el('div', { class: 'hb-colhead' }, right), 'Success rate (%)');
   hosts.rate = el('div', {}, right);
   const legendEl = el('div', { class: 'hb-legend' }, body);
   const footnoteEl = el('p', { class: 'hb-fn' }, body);
+  // the footnote's last clause follows the cost axis (a broken bar; a fitted axis), written by layoutChart
+  let axisNote = null;
   const tip = el('div', { class: 'hb-tip', role: 'tooltip' }, document.body);
   const card = body.closest('.card') || body;
 
@@ -256,6 +262,9 @@ export function mountHarness(body, spec, ctx) {
     const x1 = W - right, pw = x1 - x0;
     // aria-label quotes the settled axis, so it is written by the geometry pass
     const svg = s('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: 'img', 'data-chart': mode }, host);
+    // the panel's title, an axis title: centred over the plot area (x0..x1), on the line above the tick labels
+    s('text', { class: 'ptitle', x: (x0 + x1) / 2, y: TITLE.y, 'text-anchor': 'middle', 'font-size': TITLE.size, 'font-weight': 600, fill: INK }, svg,
+      mode === 'cost' ? 'Cost per rollout ($)' : 'Success rate (%)');
     // Gridlines and the zero axis run across each group's three bar rows only, leaving the header band clean.
     const bands = V.models.map((m, i) => ({ y1: top + i * grpH + hdr - 3, y2: top + i * grpH + hdr + HARNESSES.length * barH + (HARNESSES.length - 1) * gap + 3 })); // 3 px beyond the bars on either side
     // Gridline pool, sized for the most ticks this panel can ever ask for: the default window keeps the published
@@ -290,7 +299,7 @@ export function mountHarness(body, spec, ctx) {
       const cy0 = gy + hdr; // the first bar starts where the header band ends
       const best = bestHarnesses(m, mode); // cheapest on the cost panel, highest success rate on the rate panel; ties included
       if (C.names ?? C.labels) {
-        const name = s('text', { class: 'mname', x: C.lblX, y: gy + 14, 'font-size': 12, 'font-weight': 600, fill: INK,
+        const name = s('text', { class: 'mname', x: C.lblX, y: gy + NAME.y, 'font-size': NAME.size, 'font-weight': 600, fill: INK,
                                  role: 'button', tabindex: 0, 'aria-label': `${m.label}: highlight this model in both charts` }, g, m.label);
         name.addEventListener('click', () => togglePin(m.key, null));
         name.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePin(m.key, null); } });
@@ -445,10 +454,12 @@ export function mountHarness(body, spec, ctx) {
       const aria = `${m.label} on ${c.label}: ${fmtUSD(c.x)} per rollout${off ? ' (beyond the axis end)' : ''}, ${fmtPct(c.y)} resolved`;
       if (rec.hit.getAttribute('aria-label') !== aria) rec.hit.setAttribute('aria-label', aria);
     }
-    // header hint: the break-mark note while the default window is in force, the fit note while an axis is fitted
-    if (mode === 'cost') costHint.textContent = CAXIS.fitted
-      ? `axis fitted to ${CAXIS.fitted.label} · click again to reset`
-      : hasOff ? `broken bar: beyond the ${tax.fmt(tax.max)} axis end` : 'linear from $0';
+    // the footnote's axis clause: the fit note while an axis is fitted (interaction feedback, every host), else the
+    // break-mark note while the default window holds an off-axis cell — a mark explanation like the whisker clause, so
+    // a host whose caption already states it (ctx.note === false) goes without; nothing at all on a plain linear axis
+    if (mode === 'cost' && axisNote) axisNote.textContent = CAXIS.fitted
+      ? ` · axis fitted to ${CAXIS.fitted.label} (click again to reset)`
+      : hasOff && ctx.note !== false ? ` · broken bar = beyond the ${tax.fmt(tax.max)} axis end` : '';
   }
 
   // ---------- highlight state (applies to both charts at once) ----------
@@ -566,7 +577,8 @@ export function mountHarness(body, spec, ctx) {
   }
   // the muted line under the legend: what the bars and the whiskers encode (the serving-route note lives in the notes pane and the table).
   // The whisker clause is the card's only statement of what the whiskers are, so it stays on the dashboard; a host whose
-  // caption already says it (the blog post, ctx.note === false) gets the line without it
+  // caption already says it (the blog post, ctx.note === false) gets the line without it. The last span is the cost
+  // axis's own clause (layoutChart): empty on a plain linear axis, so the static clauses never move
   function renderFootnote() {
     const fn = footnoteEl;
     fn.innerHTML = '';
@@ -575,6 +587,7 @@ export function mountHarness(body, spec, ctx) {
     el('span', {}, fn, ' for cost, ');
     el('span', { class: 'cue' }, fn, '→ is better');
     el('span', {}, fn, ' for accuracy');
+    axisNote = el('span', { class: 'axis-note' }, fn, '');
   }
   // ---------- controls ----------
   function render() {
@@ -587,8 +600,8 @@ export function mountHarness(body, spec, ctx) {
     if (ANIM.raf) { cancelAnimationFrame(ANIM.raf); ANIM.raf = 0; }
     const t0 = axisTarget(); CAXIS.axis = t0.axis; CAXIS.target = t0.axis; CAXIS.fitted = t0.fitted;
     // a view change (the first paint, a theme change) rebuilds both structures; every later axis move is layout only
-    buildChart(PANELS.cost); buildChart(PANELS.rate); layoutChart(PANELS.cost); layoutChart(PANELS.rate); applyHighlight();
     renderLegend(); renderFootnote();
+    buildChart(PANELS.cost); buildChart(PANELS.rate); layoutChart(PANELS.cost); layoutChart(PANELS.rate); applyHighlight();
     hideTip();
   }
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') clearPin(); });

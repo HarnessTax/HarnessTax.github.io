@@ -442,16 +442,11 @@ function connector(band, metric, muted, geo, xrange, markers = []) {
 
 // ----------------------------------------------------------------- toolbar
 
+// no counts, as on the Pareto card: the tour's note while it runs, else the idle hint
 function syncStatus(state) {
-  const curves = curvesFor(state);
-  const total = curves.length;
-  const { sel } = state;
-  const active = Boolean(sel.model || sel.harness);
-  const touring = state.tour ? ' · touring the models, click anywhere to stop' : '';
-  state.pills.status.textContent = active
-    ? `${countMatches(state, sel)} of ${total} systems highlighted${touring}`
-    : state.tour ? `all ${total} systems, the frontier's leaders in full color${touring}`
-      : `pick a model or harness, or click a badge · ${ZOOM_HINT}`;
+  state.pills.status.textContent = state.tour
+    ? 'touring the models, click anywhere to stop'
+    : `pick a model or harness, or click a badge · ${ZOOM_HINT}`;
 }
 
 // -------------------------------------------------------------------- figure

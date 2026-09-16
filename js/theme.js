@@ -30,13 +30,3 @@ export function resolve(node, theme) {
   }
   return node;
 }
-
-async function render(el, spec) {
-  await loadPlotly();
-  const theme = THEMES[MODE];
-  const fig = resolve(spec.plotly, theme);
-  window.Plotly.react(el, fig.data, fig.layout, {
-    displayModeBar: false,
-    responsive: true,
-  });
-}

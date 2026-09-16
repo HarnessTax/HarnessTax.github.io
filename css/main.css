@@ -693,6 +693,8 @@ details.info { margin: 6px 0 6px 22px; }
   padding-left: 12px;
 }
 @media (max-width: 700px) { .fr-status { display: none; } }
+/* the one sample statement every observation shares ("every observation: 30 unique tasks over 3 repetitions"), under the plot */
+.fr-sample { margin: 10px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; } /* the x-axis title sits on the plot's bottom edge, so the line stands off it */
 .fr-pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .fr-swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .fr-glyph { width: 12px; height: 12px; display: inline-block; flex-shrink: 0; }
@@ -838,10 +840,7 @@ details.info { margin: 6px 0 6px 22px; }
 .hb-body { display: flex; gap: 14px; align-items: flex-start; overflow-x: auto; }
 .hb-left { width: 556px; flex: none; }
 .hb-right { width: 578px; flex: none; }
-/* column headers: identical height in both panes so the two SVGs start on the same y */
-.hb-colhead { height: 26px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 600; color: var(--ink); white-space: nowrap; }
-.hb-colhead > span:first-child { flex: none; }
-.hb-colhead .hb-hint { color: var(--muted); font-size: 10.5px; font-weight: 400; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* each pane is its SVG alone (the panel title is drawn inside it, as an axis title), so the two start on the same y */
 .harness-body svg { display: block; }
 .harness-body svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
 .hb-legend { display: flex; flex-wrap: nowrap; gap: 3px 14px; align-items: center; margin-top: 14px; padding-top: 6px; border-top: 1px solid var(--grid); color: var(--ink2); font-size: 11.5px; line-height: 1.35; }
@@ -1054,6 +1053,7 @@ html[data-view="blog"] .masthead { justify-content: flex-end; padding-bottom: 0;
    in the column it wraps, and its text changes with the selection and the
    tour, so above the plot it would shift the axes; two lines are reserved */
 .dash-figure .fr-status { display: block; margin: 8px 0 0; padding-left: 0; min-height: calc(2 * 1.45 * 11.5px); }
+.dash-figure .fr-sample { margin: 10px 0 0; } /* `.prose p` would give the sample line the essay's paragraph margins */
 /* a switch figure (`dash-switch`: the same plot on each benchmark) shows one
    pane at a time under a row of benchmark pills, after the chart switchers on
    openai.com's model posts: the chosen pill is filled with the ink colour */
@@ -1076,7 +1076,6 @@ html[data-view="blog"] .masthead { justify-content: flex-end; padding-bottom: 0;
 .dash-figure:not(.dash-wide) .hb-body { gap: 0; }
 .dash-figure:not(.dash-wide) .hb-left { width: auto; flex: 382 1 0; min-width: 0; }
 .dash-figure:not(.dash-wide) .hb-right { width: auto; flex: 320 1 0; min-width: 0; }
-.dash-figure:not(.dash-wide) .hb-left .hb-colhead { padding-right: 28px; } /* the cost hint ends short of the rate panel's heading */
 @media (max-width: 1000px) {
   .dash-wide .hb-body { flex-direction: column; align-items: stretch; gap: 24px; }
   .dash-wide .hb-left, .dash-wide .hb-right { width: 100%; max-width: 100%; flex: none; }
