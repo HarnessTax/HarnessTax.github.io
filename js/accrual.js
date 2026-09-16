@@ -25,8 +25,7 @@
 import { h, s, shape, createPills } from './pills.js';
 import { LABEL, NEAR_ORDER, COST, textWidth, labelSize, placeLabels, labelAnnotation, labelTextAnchor, edgePoint, intersects } from './labels.js';
 import { badge, badgeImage, rgba, imageSpec, sizeImages, bindZoomSync } from './icons.js';
-import { ZOOM_HINT } from './frontier.js';
-import { attachViewport } from './viewport.js';
+import { attachViewport, ZOOM_HINT } from './viewport.js';
 
 const DIM_ACTIVE = 0.12; // alpha for systems outside an explicit selection
 const END_R = 9;         // endpoint badge radius (px)

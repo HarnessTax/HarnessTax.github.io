@@ -25,7 +25,7 @@
 import { h, s, createPills } from './pills.js';
 import { badge, badgeImage, rgba, imageSpec, sizeImages, bindZoomSync } from './icons.js';
 import { HARNESS_COLOR } from './palette.js';
-import { attachViewport } from './viewport.js';
+import { attachViewport, ZOOM_HINT } from './viewport.js';
 import { LABEL, NEAR_ORDER, COST, labelSize, placeLabels, labelAnnotation, labelTextAnchor, edgePoint, intersects } from './labels.js';
 
 // shared by the SVG and the plotly figure; the top margin leaves room for a
@@ -40,7 +40,6 @@ const SUBSET_ALPHA = 0.6;
 // the status line's one gesture hint, shared with the cost-scaling card. The
 // other gestures (drag pans, double-click resets) go unsaid so the idle line
 // reads as one short hint; wheeling back out returns to the designed view
-export const ZOOM_HINT = 'wheel or shift-drag zooms';
 // harness tour after the story (the same timing as the cost-scaling card's
 // model tour): the pause before it starts and the time each stop is on show (a
 // harness, its pill's fill counting the time down, or the overview of all

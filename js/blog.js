@@ -24,6 +24,7 @@
 // hash bindings.
 import { getJSON } from './data.js';
 import { chartCard } from './charts.js';
+import { columnLayout, statusBelow } from './column.js';
 
 const MANIFEST = 'blog.json';
 async function loadPosts() {
@@ -34,56 +35,6 @@ async function loadPosts() {
     if (/\b404\b/.test(String(err && err.message))) return []; // no publish step ran
     throw err;
   }
-}
-
-// The dashboard draws its headline figures about 1150px wide at heights
-// chosen for that width; in the 736px reading column the frontier and
-// cost-scaling plots keep their type, markers and margins at full size and
-// give up some height instead, so they do not stand nearly square. The
-// cost-scaling card keeps a taller top margin where its endpoint labels can
-// stack instead of overlapping. `?h=<px>` on the dashboard: reference sets
-// the height.
-const COLUMN_LAYOUT = {
-  frontier: { height: 400 },
-  accrual: { height: 520, margin: { t: 96 } },
-};
-// The agent-context card's four column panels share one row in the reading
-// column as on the dashboard (its values are written on the columns, so a
-// quarter of the column is wide enough). On a phone a quarter is not: there
-// the same panels are re-seated two by two, the paper-relative axis domains
-// and panel titles moving and nothing else changing.
-const NARROW = '(max-width: 700px)';
-function contextNarrowLayout(spec) {
-  const base = spec.plotly && spec.plotly.layout;
-  if (!base) return null;
-  const cols = 2;
-  const gapX = 0.1;
-  const gapY = 0.24;
-  const w = (1 - gapX * (cols - 1)) / cols;
-  const rows = Math.ceil(spec.context.panels / cols);
-  const h = (1 - gapY * (rows - 1)) / rows;
-  const patch = { height: 210 * rows + 60, annotations: [] };
-  for (let i = 0; i < spec.context.panels; i++) {
-    const key = i === 0 ? '' : String(i + 1);
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const x0 = col * (w + gapX);
-    const y1 = 1 - row * (h + gapY);
-    patch[`xaxis${key}`] = { ...base[`xaxis${key}`], domain: [x0, x0 + w] };
-    patch[`yaxis${key}`] = { ...base[`yaxis${key}`], domain: [y1 - h, y1] };
-    const title = (base.annotations || [])[i];
-    if (title) patch.annotations.push({ ...title, x: x0 + w / 2, y: y1 });
-  }
-  return patch;
-}
-
-function columnLayout(spec, forcedHeight) {
-  const patch = spec.frontier ? COLUMN_LAYOUT.frontier
-    : spec.accrual ? COLUMN_LAYOUT.accrual
-    : spec.context && window.matchMedia(NARROW).matches ? contextNarrowLayout(spec)
-    : null;
-  if (!patch && !forcedHeight) return null;
-  return forcedHeight ? { ...(patch || {}), height: forcedHeight } : patch;
 }
 
 // The dashboard titles a card "<benchmark> — <figure>" with the figure half in
@@ -97,18 +48,6 @@ function postTitle(title) {
   if (at < 0) return text;
   const cut = at + sep.length;
   return text.slice(0, cut) + text.charAt(cut).toUpperCase() + text.slice(cut + 1);
-}
-
-// The card's status line (observation count, selection hints) sits at the
-// end of the harness pill row on the dashboard; in the column it wraps, and
-// its text changes with the selection and the tour, so there it would shift
-// the plot. It moves under the plot (the same element, so the card keeps
-// updating it).
-function statusBelow(card) {
-  const status = card.querySelector('.fr-status');
-  const body = card.querySelector('.card-body');
-  if (status && body) body.appendChild(status);
-  return card;
 }
 
 // A figure in the reading column is drawn compact (the harness-effect card's

@@ -5,7 +5,8 @@ import { mountFrontier } from './frontier.js';
 import { mountAccrual } from './accrual.js';
 import { mountHarness } from './harness.js';
 import { mountRankRace } from './rankrace.js';
-import { HARNESS_COLOR } from './palette.js';
+import { resolve } from './theme.js';
+import { statusChip, externalLink, renderTable } from './tables.js';
 
 let THEMES = null;
 let MODE = 'light';
@@ -43,39 +44,6 @@ function loadPlotly() {
     });
   }
   return plotlyPromise;
-}
-
-function seqColorscale(theme) {
-  const seq = theme.seq;
-  return seq.map((hex, i) => [i / (seq.length - 1), hex]);
-}
-
-function resolve(node, theme) {
-  if (typeof node === 'string') {
-    if (node === '@seq') return seqColorscale(theme);
-    // "@harness:pi|codex|cc": the harness palette (palette.js), the same hue
-    // the harness-effect and Pareto cards give that harness
-    if (node.startsWith('@harness:')) return HARNESS_COLOR[node.slice(9)] ?? node;
-    if (node.startsWith('@')) return theme[node.slice(1)] ?? node;
-    return node;
-  }
-  if (Array.isArray(node)) return node.map((v) => resolve(v, theme));
-  if (node && typeof node === 'object') {
-    const out = {};
-    for (const [k, v] of Object.entries(node)) out[k] = resolve(v, theme);
-    return out;
-  }
-  return node;
-}
-
-async function render(el, spec) {
-  await loadPlotly();
-  const theme = THEMES[MODE];
-  const fig = resolve(spec.plotly, theme);
-  window.Plotly.react(el, fig.data, fig.layout, {
-    displayModeBar: false,
-    responsive: true,
-  });
 }
 
 // Charts that ship alternative encodings of one figure (e.g. an x-axis drawn
@@ -126,67 +94,7 @@ const io = new IntersectionObserver((entries) => {
   }
 }, { rootMargin: '250px' });
 
-// ------------------------------------------------------------- table cards
-
-function statusChip(status) {
-  const chip = document.createElement('span');
-  chip.className = `chip ${status.tone || 'muted'}`;
-  chip.textContent = status.value;
-  return chip;
-}
-
-function externalLink(link) {
-  const a = document.createElement('a');
-  a.className = 'external-evidence';
-  a.href = link.href;
-  a.textContent = link.value || link.href;
-  a.target = '_blank';
-  a.rel = 'noopener noreferrer';
-  return a;
-}
-
-function renderTable(root, table) {
-  if (table.note) {
-    // a statement shared by every row (e.g. the sample) sits above the table
-    const note = document.createElement('p');
-    note.className = 'table-note';
-    note.textContent = table.note;
-    root.appendChild(note);
-  }
-  const wrap = document.createElement('div');
-  wrap.className = 'table-wrap';
-  const t = document.createElement('table');
-  const thead = document.createElement('thead');
-  const hr = document.createElement('tr');
-  for (const col of table.columns) {
-    const th = document.createElement('th');
-    th.textContent = col;
-    hr.appendChild(th);
-  }
-  thead.appendChild(hr);
-  t.appendChild(thead);
-  const tbody = document.createElement('tbody');
-  for (const row of table.rows) {
-    const tr = document.createElement('tr');
-    for (const cell of row) {
-      const td = document.createElement('td');
-      if (cell && typeof cell === 'object' && cell.kind === 'status') {
-        td.appendChild(statusChip(cell));
-      } else if (cell && typeof cell === 'object' && cell.kind === 'link') {
-        td.appendChild(externalLink(cell));
-      } else {
-        const text = cell == null ? '—' : String(cell);
-        td.textContent = text;
-        if (/^[-+]?[$0-9][0-9,./%$ ]*$/.test(text)) td.className = 'num';
-      }
-      tr.appendChild(td);
-    }
-    tbody.appendChild(tr);
-  }
-  t.appendChild(tbody);
-  wrap.appendChild(t);
-  root.appendChild(wrap);
-}
+// ------------------------------------------------------ analysis accordion
 
 function renderAccordion(root, spec) {
   const wrap = document.createElement('div');

@@ -42,6 +42,9 @@ const TAP_MOVE = 4;          // px a pointer may travel and still count as a tap
 //   reset():  redraw the designed view
 //   onTap({ clientX, clientY }): optional; a single pointer pressed and
 //             released in place inside the plot area (not the tail of a pinch)
+// what the cards tell the reader they can do here
+export const ZOOM_HINT = 'wheel or shift-drag zooms';
+
 export function attachViewport(plot, { bounds, reset, onTap }) {
   if (plot._viewport) return;
   plot._viewport = true;
