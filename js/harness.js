@@ -51,9 +51,9 @@ function s(tag, attrs, parent, text) {
   if (parent) parent.appendChild(n);
   return n;
 }
-const fmtUSD = (v) => '$' + (v >= 0.1 ? v.toFixed(2) : v.toFixed(3));
+const fmtUSD = (v) => Number.isFinite(v) ? '$' + (v >= 0.1 ? v.toFixed(2) : v.toFixed(3)) : 'Unavailable ⚠';
 const fmtNum = (v) => (v >= 0.1 || v === 0 ? v.toFixed(2) : v.toFixed(3));
-const fmtBr = (ci, f) => `[${f(ci[0])}, ${f(ci[1])}]`; // plain-bracket interval
+const fmtBr = (ci, f) => ci ? `[${f(ci[0])}, ${f(ci[1])}]` : '(interval unavailable)'; // plain-bracket interval
 const fmtPct = (v) => (v * 100).toFixed(1) + '%';
 const sgn = (v) => (v > 0 ? '+' : v < 0 ? '−' : '+');
 const fmtPP = (d) => sgn(d) + Math.abs(d * 100).toFixed(1) + '%';
@@ -81,7 +81,7 @@ function axisFor(max, step) {
 }
 // the default window keeps the published steps ($0.20 labels, $0.10 gridlines); only a fitted axis picks its own step.
 // The compact pair labels every $0.40 (gridlines at $0.20): on its 244 px plot the $0.20 labels would sit 30 px apart.
-const defaultAxis = (win, compact) => axisFor(win.max, compact ? 0.4 : 0.2);
+const defaultAxis = (win, compact) => axisFor(win.max, Math.max(compact ? 0.4 : 0.2, niceStep(win.max)));
 
 // ---------- two aligned bar charts ----------
 // Shared vertical geometry (top, grpH, hdr, barH, gap) so row i of the left chart sits on exactly the same y as row i of the right chart.
@@ -168,7 +168,7 @@ export function mountHarness(body, spec, ctx) {
   // ---------- data model ----------
   // Every model: its cells (Pi, Codex, Claude Code) drawn identically; the ordered pairs of the cells it has, difference second − first.
   function buildView() {
-    const fp = B.frontier_points || [];
+    const fp = B.outcome_points || B.frontier_points || [];
     // the dashboard-wide model order, then any model that only has cells
     const order = B.models.map((m) => m.key);
     for (const p of fp) if (!order.includes(p.model)) order.push(p.model);
@@ -180,11 +180,11 @@ export function mountHarness(body, spec, ctx) {
         if (!p) continue;
         const row = B.rows.find((r) => r.kind === 'pair' && r.model === key && r.harness === h) || null;
         cells[h] = { model: key, harness: h, label: HARNESS_LABEL[h], symbol: p.symbol, x: p.x, y: p.y, x_ci: p.x_ci, y_ci: p.y_ci,
-                     cross: p.publication_scope === CROSS_SCOPE, cohort: p.cohort, replicates: p.replicates, row };
+                     cross: p.publication_scope === CROSS_SCOPE, cohort: p.cohort, replicates: p.replicates, warning: p.warning, row };
       }
       const present = HARNESSES.filter((h) => cells[h]);
       const pairs = PAIRS.filter(([a, b]) => cells[a] && cells[b]).map(([a, b]) => makePair(cells[a], cells[b]));
-      const xs = present.map((h) => cells[h].x);
+      const xs = present.map((h) => cells[h].x).filter(Number.isFinite);
       const M = { key, label: m.label, cells, present, pairs, spread: xs.length ? Math.max(...xs) / Math.min(...xs) : 1 };
       for (const p of pairs) p.model = M;
       return M;
@@ -198,7 +198,7 @@ export function mountHarness(body, spec, ctx) {
   // linear cost window per benchmark: a cell more than 3× the next-costliest cell on the bench goes off-axis (repeated from the top);
   // the axis end is the smallest $0.20 multiple that holds every on-axis cell
   function costWindow(models) {
-    const xs = allCells(models).map((z) => z.c.x).sort((a, b) => b - a);
+    const xs = allCells(models).map((z) => z.c.x).filter(Number.isFinite).sort((a, b) => b - a);
     const off = [];
     while (xs.length > 1 && xs[0] > 3 * xs[1]) off.push(xs.shift());
     const max = +(Math.ceil((xs[0] || 0) / 0.2 - 1e-9) * 0.2).toFixed(6) || 0.2;
@@ -207,18 +207,18 @@ export function mountHarness(body, spec, ctx) {
   // a model is fittable when the default window pushes one of its cells off-axis; the fitted end is the nice step multiple at or above its largest cost
   function fitAxisFor(m) {
     if (!m || !m.present.some((h) => VIEW.costWin.isOff(m.cells[h]))) return null;
-    const v = Math.max(...m.present.map((h) => m.cells[h].x));
+    const v = Math.max(...m.present.map((h) => m.cells[h].x).filter(Number.isFinite));
     const step = niceStep(v);
     return axisFor(+(Math.ceil(v / step - 1e-9) * step).toFixed(6), step);
   }
   function makePair(a, b) {
     const row = a.harness === 'pi' && b.row ? b.row : null;
-    const dpp = b.y - a.y, ratio = b.x / a.x;
+    const dpp = b.y - a.y, ratio = Number.isFinite(a.x) && Number.isFinite(b.x) && a.x > 0 ? b.x / a.x : null;
     let dpp_ci, ratio_ci, paired;
-    if (row) { dpp_ci = row.rate.ci.slice(); ratio_ci = row.cost.ratio_ci.slice(); paired = true; }
+    if (row) { dpp_ci = row.rate.ci.slice(); ratio_ci = row.cost?.ratio_ci?.slice() || null; paired = true; }
     else {
       dpp_ci = [b.y_ci[0] - a.y_ci[1], b.y_ci[1] - a.y_ci[0]];
-      ratio_ci = a.x_ci[0] > 0 && b.x_ci[0] > 0 ? [b.x_ci[0] / a.x_ci[1], b.x_ci[1] / a.x_ci[0]] : null;
+      ratio_ci = a.x_ci && b.x_ci && a.x_ci[0] > 0 && b.x_ci[0] > 0 ? [b.x_ci[0] / a.x_ci[1], b.x_ci[1] / a.x_ci[0]] : null;
       paired = false;
     }
     const covers = dpp_ci[0] <= 1e-9 && dpp_ci[1] >= -1e-9;
@@ -234,10 +234,11 @@ export function mountHarness(body, spec, ctx) {
   }
   function bestHarnesses(m, mode) {
     const val = (h) => (mode === 'cost' ? m.cells[h].x : m.cells[h].y);
-    const vs = m.present.map(val);
+    const vs = m.present.map(val).filter(Number.isFinite);
+    if (!vs.length) return [];
     const target = mode === 'cost' ? Math.min(...vs) : Math.max(...vs);
     const eps = Math.max(1e-9, Math.abs(target) * 1e-9);
-    return m.present.filter((h) => Math.abs(val(h) - target) <= eps);
+    return m.present.filter((h) => Number.isFinite(val(h)) && Math.abs(val(h) - target) <= eps);
   }
 
   // A chart is drawn in two passes, because a rescale animates and nothing may be lost while it runs:
@@ -410,6 +411,17 @@ export function mountHarness(body, spec, ctx) {
     for (const rec of R.cells) {
       const c = rec.c, m = rec.m;
       const v = mode === 'cost' ? c.x : c.y;
+      if (!Number.isFinite(v)) {
+        // Missing accounting is a labeled absence, never a zero-width cost bar.
+        rec.rect.setAttribute('display', 'none');
+        for (const node of Object.values(rec.whisker)) node.setAttribute('display', 'none');
+        rec.val.setAttribute('x', x0 + 6);
+        rec.val.setAttribute('data-accounting-warning', 'true');
+        rec.val.textContent = 'Unavailable ⚠';
+        rec.tipX = x0;
+        rec.hit.setAttribute('aria-label', `${m.label} on ${c.label}: cost unavailable; ${fmtPct(c.y)} resolved`);
+        continue;
+      }
       const clipped = mode === 'cost' && ax.isOff(c);  // beyond the axis end of the frame being painted
       const off = mode === 'cost' && tax.isOff(c);     // beyond the settled axis end: what the labels report
       const brk = clipped && off;                      // break mark only where the bar is clipped and will stay clipped
@@ -534,12 +546,13 @@ export function mountHarness(body, spec, ctx) {
       `<div class="dup">${fmtPct(c.y)} resolved ${fmtBr(c.y_ci, (v) => (v * 100).toFixed(1))}</div>`,
       `<div class="dup">${fmtUSD(c.x)} per rollout ${fmtBr(c.x_ci, fmtNum)}${tax.isOff(c) ? ' · bar broken: beyond the ' + tax.fmt(tax.max) + ' axis end' : ''}</div>`];
     // this cell against the model's other two harnesses (this − other; this ÷ other)
-    const others = m.present.filter((h) => h !== c.harness).map((h) => { const o = m.cells[h]; return `vs ${o.label} ${fmtPP(c.y - o.y)}, ${fmtMult(c.x / o.x)} cost`; });
+    const others = m.present.filter((h) => h !== c.harness).map((h) => { const o = m.cells[h]; return `vs ${o.label} ${fmtPP(c.y - o.y)}, ${Number.isFinite(c.x) && Number.isFinite(o.x) && o.x > 0 ? fmtMult(c.x / o.x) + ' cost' : 'cost unavailable'}`; });
     let l4 = `<span class="r">${others.join(' · ')}</span>`;
     const pr = m.pairs.find((p) => p.b.harness === c.harness && p.a.harness === 'pi');
     const cn = pr ? capNote(pr) : '';
     if (cn) l4 += ` · <span class="cap">${cn}</span>`;
     lines.push(`<div>${l4}</div>`);
+    if (c.warning) lines.push(`<div class="accounting-warning">⚠ ${c.warning}</div>`);
     return lines.join('');
   }
   function showTip(html, e) { tip.innerHTML = html; tip.style.display = 'block'; moveTip(e); }
