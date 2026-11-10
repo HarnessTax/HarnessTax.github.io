@@ -576,7 +576,7 @@ async function renderInteractive(state) {
       && (!sel.harness || tr.meta.harness === sel.harness);
     // confidence intervals only for an explicit selection, drawn light so
     // the badges and labels stay in front
-    const showIntervals = active && match;
+    const showIntervals = (active || state.spec.frontier.intervals_default === true) && match;
     if (tr.error_x) tr.error_x = { ...tr.error_x, visible: showIntervals, color: rgba(tr.error_x.color, CI_ALPHA) };
     if (tr.error_y) tr.error_y = { ...tr.error_y, visible: showIntervals, color: rgba(tr.error_y.color, CI_ALPHA) };
     if (!active) tr.opacity = tr.meta.frontier ? 1 : FAINT;
