@@ -217,11 +217,12 @@ export function mountHarness(body, spec, ctx) {
     let dpp_ci, ratio_ci, paired;
     if (row) { dpp_ci = row.rate.ci.slice(); ratio_ci = row.cost?.ratio_ci?.slice() || null; paired = true; }
     else {
-      dpp_ci = [b.y_ci[0] - a.y_ci[1], b.y_ci[1] - a.y_ci[0]];
+      // a cell without a 95 % interval (y_ci null: the Science cells) leaves the unpaired contrast without one too
+      dpp_ci = a.y_ci && b.y_ci ? [b.y_ci[0] - a.y_ci[1], b.y_ci[1] - a.y_ci[0]] : null;
       ratio_ci = a.x_ci && b.x_ci && a.x_ci[0] > 0 && b.x_ci[0] > 0 ? [b.x_ci[0] / a.x_ci[1], b.x_ci[1] / a.x_ci[0]] : null;
       paired = false;
     }
-    const covers = dpp_ci[0] <= 1e-9 && dpp_ci[1] >= -1e-9;
+    const covers = !!dpp_ci && dpp_ci[0] <= 1e-9 && dpp_ci[1] >= -1e-9;
     let qual, kind, caveats = [];
     if (a.cross || b.cross) { kind = 'cross'; qual = 'serving route differs · approx. interval (cell means, not paired)'; }
     else if (row) {
@@ -431,17 +432,22 @@ export function mountHarness(body, spec, ctx) {
       rec.rect.setAttribute('width', bw);
       // the 95 % whisker: both ends mapped through this frame's axis (the cost whiskers rescale with the bars); an end past
       // the axis end is clipped to it and loses its cap. The value at the tip is placed from the bar alone, never the whisker.
+      // A cell without an interval (x_ci / y_ci null: the Science cells) draws no whisker.
       const ci = mode === 'cost' ? c.x_ci : c.y_ci;
       const wmax = mode === 'cost' ? ax.max : 1;
-      const wlo = scale(ci[0]), whi = scale(ci[1]);
-      const loClip = ci[0] > wmax + 1e-9, hiClip = ci[1] > wmax + 1e-9;
       const Wk = rec.whisker;
-      Wk.line.setAttribute('x1', wlo); Wk.line.setAttribute('x2', whi);
-      Wk.capLo.setAttribute('x1', wlo); Wk.capLo.setAttribute('x2', wlo);
-      Wk.capHi.setAttribute('x1', whi); Wk.capHi.setAttribute('x2', whi);
-      if (loClip) Wk.capLo.setAttribute('display', 'none'); else Wk.capLo.removeAttribute('display');
-      if (hiClip) Wk.capHi.setAttribute('display', 'none'); else Wk.capHi.removeAttribute('display');
-      Wk.line.setAttribute('data-clipped', hiClip ? 'hi' : loClip ? 'lo' : 'none');
+      if (!ci) {
+        for (const node of Object.values(Wk)) node.setAttribute('display', 'none');
+      } else {
+        const wlo = scale(ci[0]), whi = scale(ci[1]);
+        const loClip = ci[0] > wmax + 1e-9, hiClip = ci[1] > wmax + 1e-9;
+        Wk.line.setAttribute('x1', wlo); Wk.line.setAttribute('x2', whi);
+        Wk.capLo.setAttribute('x1', wlo); Wk.capLo.setAttribute('x2', wlo);
+        Wk.capHi.setAttribute('x1', whi); Wk.capHi.setAttribute('x2', whi);
+        if (loClip) Wk.capLo.setAttribute('display', 'none'); else Wk.capLo.removeAttribute('display');
+        if (hiClip) Wk.capHi.setAttribute('display', 'none'); else Wk.capHi.removeAttribute('display');
+        Wk.line.setAttribute('data-clipped', hiClip ? 'hi' : loClip ? 'lo' : 'none');
+      }
       const valX = tipX + 6; // the ring's outer edge ends at tip + 3, so the value always sits clear of it
       if (rec.bestRect) { // the ring follows the bar's rect, expanded by BEST.pad on every side; only its width is axis-dependent
         const R2 = rec.bestRect;
